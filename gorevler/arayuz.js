@@ -106,6 +106,8 @@ async function calistir(baglam) {
       ayarlar: {
         sonEk: (ayarlar.chatgpt || {}).sonEk || '',
         projeKlasoru: (ayarlar.claude || {}).projeKlasoru || '',
+        depoAdresi: (ayarlar.git || {}).depoAdresi || '',
+        klasorSecilebilir: process.platform === 'win32',
         ciktiKlasoru: cikti,
       },
     };
@@ -181,6 +183,13 @@ async function calistir(baglam) {
         if (klasor && !fs.existsSync(path.resolve(kok, klasor))) throw new IstekHatasi(400, `Klasör bulunamadı: ${klasor}`);
         degisiklik.claude = { projeKlasoru: klasor };
       }
+      if (typeof govde.depoAdresi === 'string') {
+        const adres = govde.depoAdresi.trim();
+        if (adres && !/^(https:\/\/|git@|[\w.-]+\/[\w.-]+$)/.test(adres) && !fs.existsSync(adres)) {
+          throw new IstekHatasi(400, 'Depo adresi https://github.com/kullanici/depo biçiminde olmalı.');
+        }
+        degisiklik.git = { depoAdresi: adres };
+      }
       yerelAyarYaz(ayarDosyasi, degisiklik);
     },
 
@@ -191,8 +200,13 @@ async function calistir(baglam) {
       const durum = jsonOku(durumDosyasi(), {});
       const bekleyenler = isleriOku().filter((is) => !bitenDosyalar(is, durum, cikti).length);
       if (!bekleyenler.length) throw new IstekHatasi(400, 'Sırada bekleyen iş yok.');
-      if (govde.sonra !== 'yok' && !(ayarOku().claude || {}).projeKlasoru) {
-        throw new IstekHatasi(400, 'Bunun için önce Ayarlar bölümünde oyun projesi klasörünü yaz.');
+      const guncel = ayarOku();
+      const projeVar = Boolean((guncel.claude || {}).projeKlasoru);
+      if (govde.sonra === 'claude' && !projeVar) {
+        throw new IstekHatasi(400, 'Claude Code için önce Ayarlar bölümünde oyun projesi klasörünü seç.');
+      }
+      if (govde.sonra === 'github' && !projeVar && !(guncel.git || {}).depoAdresi && !(guncel.git || {}).projeKlasoru) {
+        throw new IstekHatasi(400, 'GitHub için önce Ayarlar bölümünde GitHub deposunun adresini yaz.');
       }
 
       sonra = govde.sonra;
@@ -202,7 +216,7 @@ async function calistir(baglam) {
         JSON.stringify(bekleyenler.map((is) => ({ ad: is.ad, istem: is.istem, referanslar: is.referanslar.map((d) => path.join(refKlasoru, d)) })))
       );
       gunlugeYaz(`—— ${bekleyenler.length} iş başlatıldı ——`);
-      const argumanlar = ['gorsel-uret', ...SONRAKI_ADIM[sonra], '--ayarlar', ayarDosyasi, '--istemler', calisanDosya];
+      const argumanlar = ['gorsel-uret', ...SONRAKI_ADIM[sonra], '--ayarlar', ayarDosyasi, '--istemler', calisanDosya, '--veri', veriKlasoru];
       // Robot görünür bir komut penceresi olmadan çalışıyorsa (masaüstü kısayolu)
       // Claude Code sohbeti kendi penceresinde açılır.
       if (process.platform === 'win32' && !process.stdout.isTTY) argumanlar.push('--claude-mod', 'pencere');
@@ -220,6 +234,26 @@ async function calistir(baglam) {
 
     '/api/durdur': () => {
       if (surec) surec.kill();
+    },
+
+    // Windows'un klasör seçme penceresini açar ve seçilen yolu döndürür.
+    '/api/klasor-sec': () => {
+      if (process.platform !== 'win32') throw new IstekHatasi(400, 'Klasör seçme penceresi yalnızca Windows\'ta açılır; yolu elle yaz.');
+      const betik = [
+        'Add-Type -AssemblyName System.Windows.Forms',
+        '$ust = New-Object System.Windows.Forms.Form',
+        '$ust.TopMost = $true',
+        '$pencere = New-Object System.Windows.Forms.FolderBrowserDialog',
+        "$pencere.Description = 'Oyun projesi klasorunu sec'",
+        'if ($pencere.ShowDialog($ust) -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; [Console]::Out.Write($pencere.SelectedPath) }',
+      ].join('; ');
+      return new Promise((coz, reddet) => {
+        const ps = spawn('powershell.exe', ['-NoProfile', '-STA', '-Command', betik], { stdio: ['ignore', 'pipe', 'ignore'] });
+        let cikti = '';
+        ps.stdout.on('data', (parca) => (cikti += parca));
+        ps.on('error', () => reddet(new IstekHatasi(500, 'Klasör seçme penceresi açılamadı; yolu elle yaz.')));
+        ps.on('close', () => coz({ klasor: cikti.trim() }));
+      });
     },
   };
 
@@ -291,8 +325,8 @@ async function calistir(baglam) {
         if (!jsonMu || (kaynak && !izinliKaynaklar.has(kaynak.replace(/^https?:\/\//, '')))) {
           throw new IstekHatasi(403, 'İstek reddedildi.');
         }
-        await islemler[yol](await govdeyiOku(istek));
-        json(200, durumOzeti());
+        const ek = await islemler[yol](await govdeyiOku(istek));
+        json(200, { ...durumOzeti(), ...(ek || {}) });
         return;
       }
       yanit.writeHead(404).end();

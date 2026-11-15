@@ -2,49 +2,124 @@
 // GitHub'a (uzak depoya) gönderir. Böylece buluttaki Claude Code sohbetleri
 // görselleri depodan görebilir.
 //
-// Projede o an açık olan dala gönderir; dal değiştirmez. Projedeki başka
-// değişikliklere dokunmaz.
+// İki şekilde çalışır:
+//   - git.depoAdresi yazılıysa robot depoyu kendi veri klasörüne indirir, her
+//     seferinde günceller ve oraya gönderir. Adres deponun kendisi olabilir
+//     (https://github.com/kullanici/oyun) ya da depodaki bir klasörün sayfası
+//     (https://github.com/kullanici/oyun/tree/dal-adi/gorseller); ikincisinde dal
+//     ve klasör adresten okunur.
+//   - Yazılı değilse bilgisayarındaki proje klasörünü kullanır; o an açık olan
+//     dala gönderir, dal değiştirmez, projedeki başka değişikliklere dokunmaz.
 //
 // ayarlar.json > git:
-//   projeKlasoru    Boşsa claude.projeKlasoru kullanılır
+//   depoAdresi      GitHub deposunun ya da içindeki bir klasörün adresi (ya da "kullanici/depo")
+//   dal             Gönderilecek dal; boşsa adresteki dal, o da yoksa deponun ana dalı
+//   projeKlasoru    Depo adresi yoksa kullanılır; o da boşsa claude.projeKlasoru
 //   hedefAltKlasor  Boşsa claude.hedefAltKlasor kullanılır
 //   uzak            Gönderilecek uzak depo adı (varsayılan "origin")
 //   commitMesaji    {adet} yerine görsel sayısı yazılır
 //
 // Seçenekler:  --proje <klasör>   --mesaj "<commit mesajı>"
 
+const fs = require('fs');
+const path = require('path');
 const { spawnSync } = require('child_process');
-const { gonderilecekGorseller, projeKlasorunuBul, projeyeKopyala } = require('../lib/gorseller');
+const { dosyaAdinaCevir, gonderilecekGorseller, projeKlasorunuBul, projeyeKopyala, veriKlasoru } = require('../lib/gorseller');
 
-function git(proje, argumanlar, girdi) {
-  const sonuc = spawnSync('git', argumanlar, { cwd: proje, encoding: 'utf8', input: girdi });
-  if (sonuc.error) throw new Error(`git çalıştırılamadı (${sonuc.error.message}). Git kurulu mu?`);
+function git(proje, argumanlar, girdi, zamanAsimi = 120000) {
+  // Parola komut penceresinden sorulmaz (pencere görünmüyor olabilir); Git'in giriş penceresi yine açılır.
+  const sonuc = spawnSync('git', argumanlar, {
+    cwd: proje,
+    encoding: 'utf8',
+    input: girdi,
+    timeout: zamanAsimi,
+    env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+  });
+  if (sonuc.error && sonuc.error.code === 'ENOENT') throw new Error('Git kurulu değil. https://git-scm.com/download/win adresinden kur, sonra tekrar dene.');
+  if (sonuc.error) throw new Error(`git çalıştırılamadı (${sonuc.error.message}).`);
   return { kod: sonuc.status, cikti: `${sonuc.stdout || ''}${sonuc.stderr || ''}`.trim() };
 }
 
-function gitZorunlu(proje, argumanlar, girdi, neOldu) {
-  const sonuc = git(proje, argumanlar, girdi);
+function gitZorunlu(proje, argumanlar, girdi, neOldu, zamanAsimi) {
+  const sonuc = git(proje, argumanlar, girdi, zamanAsimi);
   if (sonuc.kod !== 0) throw new Error(`${neOldu}\n${sonuc.cikti}`);
   return sonuc.cikti;
+}
+
+// Yazılan adresi deponun adresine ve (varsa) depo içindeki yola ayırır.
+//   https://github.com/kullanici/oyun/tree/dal/klasor -> { adres: '.../kullanici/oyun', yol: 'dal/klasor' }
+function depoAdresiniAyir(girdi) {
+  const metin = String(girdi).trim();
+  if (/^[\w.-]+\/[\w.-]+$/.test(metin) && !fs.existsSync(metin)) return { adres: `https://github.com/${metin}`, yol: '' };
+  const github = metin.match(/^https:\/\/github\.com\/([^/]+)\/([^/?#]+?)(?:\.git)?(?:\/(?:tree|upload|blob)\/([^?#]+?))?\/?(?:[?#].*)?$/);
+  if (!github) return { adres: metin, yol: '' };
+  return { adres: `https://github.com/${github[1]}/${github[2]}`, yol: github[3] ? decodeURIComponent(github[3]) : '' };
+}
+
+// Dal adlarında da "/" olabildiği için yol, depodaki dallarla karşılaştırılarak bölünür.
+function dalVeKlasorAyir(yol, dallar) {
+  const dal = dallar
+    .filter((aday) => yol === aday || yol.startsWith(`${aday}/`))
+    .sort((a, b) => b.length - a.length)[0];
+  return dal ? { dal, klasor: yol.slice(dal.length + 1) } : { dal: '', klasor: '' };
+}
+
+// Depoyu robotun veri klasörüne indirir (zaten inmişse günceller) ve istenen dala geçer.
+// Sonuç: { klasor: deponun bilgisayardaki yeri, altKlasor: adresten okunan hedef klasör }
+function depoyuHazirla(baglam, { adres, yol }, istenenDal) {
+  const { gunluk } = baglam;
+  const depolar = path.join(veriKlasoru(baglam), 'depolar');
+  const ad = dosyaAdinaCevir(adres.replace(/\.git$/, '').split(/[\\/:]/).filter(Boolean).pop() || 'depo');
+  const klasor = path.join(depolar, ad);
+  fs.mkdirSync(depolar, { recursive: true });
+
+  if (!fs.existsSync(path.join(klasor, '.git'))) {
+    gunluk(`Depo indiriliyor: ${adres}`);
+    gitZorunlu(depolar, ['clone', adres, ad], undefined, 'Depo indirilemedi. Adres doğru mu, depoya erişimin var mı?', 600000);
+  } else if (git(klasor, ['fetch', 'origin', '--prune']).kod !== 0) {
+    gunluk('Depo güncellenemedi; eldeki hâliyle devam ediliyor.');
+  }
+
+  let dal = istenenDal || '';
+  let altKlasor = '';
+  if (yol) {
+    const dallar = git(klasor, ['for-each-ref', '--format=%(refname:lstrip=3)', 'refs/remotes/origin']).cikti.split('\n').filter((d) => d && d !== 'HEAD');
+    ({ dal, klasor: altKlasor } = dalVeKlasorAyir(yol, dallar));
+    if (!dal) throw new Error(`Adresteki dal depoda bulunamadı: ${yol}. Dal silinmiş ya da adı değişmiş olabilir; adresi güncelle.`);
+  }
+  if (dal) gitZorunlu(klasor, ['checkout', dal], undefined, `"${dal}" dalına geçilemedi.`);
+  git(klasor, ['pull', '--ff-only']);
+
+  // Git'te ad ve e-posta tanımlı değilse commit oluşturulamaz.
+  if (!git(klasor, ['config', 'user.email']).cikti) {
+    git(klasor, ['config', 'user.name', 'Robot']);
+    git(klasor, ['config', 'user.email', 'robot@localhost']);
+  }
+  return { klasor, altKlasor };
 }
 
 async function calistir(baglam) {
   const { ayarlar, secenekler, gunluk } = baglam;
   const ayar = ayarlar.git || {};
   const claude = ayarlar.claude || {};
-  const proje = projeKlasorunuBul(baglam, ayar.projeKlasoru, claude.projeKlasoru);
-  const altKlasor = ayar.hedefAltKlasor || claude.hedefAltKlasor;
-  if (!altKlasor) throw new Error('Görsellerin proje içinde nereye konacağı belli değil. ayarlar.json > git.hedefAltKlasor alanını doldur.');
-
-  if (git(proje, ['rev-parse', '--is-inside-work-tree']).kod !== 0) {
-    throw new Error(`${proje} bir git deposu değil.`);
+  const depo = !secenekler.proje && !ayar.projeKlasoru && ayar.depoAdresi ? depoAdresiniAyir(ayar.depoAdresi) : null;
+  if (!depo && !secenekler.proje && !ayar.projeKlasoru && !claude.projeKlasoru) {
+    throw new Error('GitHub deposu belirtilmemiş. Ayarlar bölümünde "GitHub deposu" alanını doldur.');
   }
-
   const kaynaklar = gonderilecekGorseller(baglam);
   if (!kaynaklar.length) {
     gunluk('Gönderilecek yeni görsel yok; GitHub adımı atlandı.');
     return;
   }
+
+  const hazir = depo ? depoyuHazirla(baglam, depo, ayar.dal) : { klasor: projeKlasorunuBul(baglam, ayar.projeKlasoru, claude.projeKlasoru), altKlasor: '' };
+  const proje = hazir.klasor;
+  if (git(proje, ['rev-parse', '--is-inside-work-tree']).kod !== 0) {
+    throw new Error(`${proje} bir git deposu değil.`);
+  }
+  // Adres bir klasörü gösteriyorsa görseller oraya, yoksa ayarlardaki klasöre konur.
+  const altKlasor = hazir.altKlasor || ayar.hedefAltKlasor || claude.hedefAltKlasor;
+  if (!altKlasor) throw new Error('Görsellerin depoda nereye konacağı belli değil. ayarlar.yerel.json > git.hedefAltKlasor alanını doldur.');
 
   const yollar = projeyeKopyala(kaynaklar, proje, altKlasor);
   // Yollar git'e standart girdiden, NUL ile ayrılmış verilir: adet ve özel karakter sınırı olmaz.
@@ -64,8 +139,7 @@ async function calistir(baglam) {
     gunluk('Görseller depoda zaten güncel; yeni commit gerekmedi.');
   }
 
-  const dal = gitZorunlu(proje, ['rev-parse', '--abbrev-ref', 'HEAD'], undefined, 'Açık dal okunamadı.');
-  if (dal === 'HEAD') throw new Error('Projede açık bir dal yok (ayrık HEAD). Bir dala geçip tekrar çalıştır.');
+  const dal = gitZorunlu(proje, ['symbolic-ref', '--short', 'HEAD'], undefined, 'Projede açık bir dal yok. Bir dala geçip tekrar çalıştır.');
   const uzak = ayar.uzak || 'origin';
   gunluk(`${uzak}/${dal} dalına gönderiliyor…`);
   gitZorunlu(
@@ -80,6 +154,9 @@ async function calistir(baglam) {
 }
 
 module.exports = {
+  depoAdresiniAyir,
+  depoyuHazirla,
+  dalVeKlasorAyir,
   ad: 'git-gonder',
   aciklama: 'Görselleri proje klasörüne kopyalar, commit\'ler ve GitHub\'a gönderir',
   calistir,

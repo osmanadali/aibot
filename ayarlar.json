@@ -38,6 +38,8 @@
     "mesaj": "Robot şu görselleri üretip projeye ekledi. Hepsine bak ve kısaca ne olduklarını özetle; sonra ne yapmamı istediğimi sor."
   },
   "git": {
+    "depoAdresi": "",
+    "dal": "",
     "projeKlasoru": "",
     "hedefAltKlasor": "",
     "uzak": "origin",

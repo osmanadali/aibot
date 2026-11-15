@@ -19,7 +19,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
-const { gonderilecekGorseller, projeKlasorunuBul, projeyeKopyala } = require('../lib/gorseller');
+const { gonderilecekGorseller, projeKlasorunuBul, projeyeKopyala, veriKlasoru } = require('../lib/gorseller');
 
 function claudeCalistir({ komut, bayraklar, mesaj, mod, proje }) {
   return new Promise((coz, reddet) => {
@@ -89,7 +89,7 @@ async function calistir(baglam) {
   const istenenMod = secenekler['claude-mod'] || ayar.mod;
   const komut = ayar.komut || 'claude';
   if (istenenMod === 'pencere' && process.platform === 'win32') {
-    yeniPenceredeAc({ komut, mesaj, proje, devamEt: Boolean(ayar.devamEt), betikDosyasi: path.join(baglam.kok, 'veri', 'claude-ac.cmd') });
+    yeniPenceredeAc({ komut, mesaj, proje, devamEt: Boolean(ayar.devamEt), betikDosyasi: path.join(veriKlasoru(baglam), 'claude-ac.cmd') });
     gunluk(`Claude Code sohbeti yeni bir pencerede açıldı: ${proje}`);
     return;
   }

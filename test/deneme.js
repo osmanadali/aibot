@@ -173,6 +173,41 @@ async function ana() {
     sonuc = await robotCalistir(['git-gonder', '--ayarlar', ayarDosyasi]);
     kontrol(sonuc.status === 0 && git(uzakDepo, 'rev-parse', 'ana') === oncekiCommit, 'tekrar çalıştırınca boş commit oluşmadı');
 
+    console.log('4b) git-gonder: depo adresiyle (robot depoyu kendisi indirir), dal ve klasör seçimi');
+    const { depoAdresiniAyir, dalVeKlasorAyir } = require('../gorevler/git-gonder');
+    const ayrilan = depoAdresiniAyir('https://github.com/ornek/oyun/tree/claude/yeni-ozellik/gorseller');
+    kontrol(ayrilan.adres === 'https://github.com/ornek/oyun' && ayrilan.yol === 'claude/yeni-ozellik/gorseller', 'klasör sayfasının adresi depo ve yola ayrıldı');
+    kontrol(depoAdresiniAyir('https://github.com/ornek/oyun/upload/main/gorseller').yol === 'main/gorseller' && depoAdresiniAyir('ornek/oyun').adres === 'https://github.com/ornek/oyun' && depoAdresiniAyir('https://github.com/ornek/oyun.git').yol === '', 'yükleme sayfası, kısa ad ve düz depo adresi de anlaşıldı');
+    const bolunen = dalVeKlasorAyir('claude/yeni-ozellik/gorseller', ['main', 'claude/yeni-ozellik', 'claude']);
+    kontrol(bolunen.dal === 'claude/yeni-ozellik' && bolunen.klasor === 'gorseller', 'içinde "/" olan dal adı klasörden doğru ayrıldı');
+
+    git(uzakDepo, 'symbolic-ref', 'HEAD', 'refs/heads/ana');
+    git(proje, 'checkout', '-q', '-b', 'claude/deneme-dali');
+    fs.writeFileSync(path.join(proje, 'dalda.txt'), 'dal');
+    git(proje, 'add', 'dalda.txt');
+    git(proje, 'commit', '-q', '-m', 'dal');
+    git(proje, 'push', '-q', 'origin', 'claude/deneme-dali');
+    const veriGit = path.join(gecici, 'veri-git');
+    ayarlar.git = { depoAdresi: uzakDepo, dal: 'claude/deneme-dali', hedefAltKlasor: 'gorseller', uzak: 'origin' };
+    ayarYaz();
+    sonuc = await robotCalistir(['git-gonder', '--ayarlar', ayarDosyasi, '--veri', veriGit]);
+    let daldakiler = git(uzakDepo, 'ls-tree', '-r', '--name-only', 'claude/deneme-dali').split('\n');
+    kontrol(sonuc.status === 0 && daldakiler.includes('gorseller/sovalye.png') && daldakiler.includes('dalda.txt'), 'depo indirildi, görseller istenen dala ve klasöre gönderildi');
+    kontrol(!git(uzakDepo, 'ls-tree', '-r', '--name-only', 'ana').includes('gorseller/'), 'ana dala dokunulmadı');
+    // Başka biri (ör. buluttaki sohbet) aynı dala commit atarsa robot önce onu almalı.
+    git(proje, 'pull', '-q', 'origin', 'claude/deneme-dali');
+    fs.writeFileSync(path.join(proje, 'buluttan.txt'), 'bulut');
+    git(proje, 'add', 'buluttan.txt');
+    git(proje, 'commit', '-q', '-m', 'buluttan');
+    git(proje, 'push', '-q', 'origin', 'claude/deneme-dali');
+    fs.copyFileSync(path.join(cikti, 'sovalye.png'), path.join(cikti, 'yeni-gorsel.png'));
+    sonuc = await robotCalistir(['git-gonder', '--ayarlar', ayarDosyasi, '--veri', veriGit]);
+    daldakiler = git(uzakDepo, 'ls-tree', '-r', '--name-only', 'claude/deneme-dali').split('\n');
+    kontrol(sonuc.status === 0 && daldakiler.includes('gorseller/yeni-gorsel.png') && daldakiler.includes('buluttan.txt'), 'depodaki yeni değişiklikler alınıp üzerine gönderildi');
+    fs.rmSync(path.join(cikti, 'yeni-gorsel.png'));
+    delete ayarlar.git;
+    ayarYaz();
+
     console.log('5) Arayüz: referans görselli iş ekleme, başlatma, sonucu görme');
     const arayuz = spawn(
       process.execPath,

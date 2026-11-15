@@ -91,17 +91,25 @@ node robot.js claude-gonder --mesaj "Bu görselleri düşman sprite'ı olarak oy
 ### Görselleri GitHub'a gönderme
 
 Claude Code'u bulutta (claude.ai/code ya da uygulama) kullanıyorsan sohbet
-bilgisayarındaki dosyaları göremez; görseller depoda olmalı. Bunun için:
+bilgisayarındaki dosyaları göremez; görseller depoda olmalı.
 
-```bash
-calistir.bat oyun-gorselleri-github
-```
+1. Bilgisayarında [Git](https://git-scm.com/download/win) kurulu olmalı.
+2. Arayüzde **Ayarlar > GitHub deposu** alanına adresi yapıştır. İki biçim de olur:
+   - Depodaki bir klasörün sayfası:
+     `https://github.com/kullanici/oyunum/tree/dal-adi/gorseller`
+     Görseller o dala ve o klasöre gönderilir.
+   - Deponun kendisi: `https://github.com/kullanici/oyunum`
+     Görseller ana dalda `assets/uretilen/` klasörüne gönderilir.
+3. **Bitince** bölümünde **GitHub**'ı seçip başlat.
 
-Robot görselleri üretir, projendeki `assets/uretilen/` klasörüne kopyalar, yalnızca
-o dosyaları commit'ler ve projede o an açık olan dala gönderir. Dal değiştirmez,
-projedeki diğer değişikliklere dokunmaz. Proje klasörü bir git deposu olmalı ve
-bilgisayarında `git push` çalışıyor olmalı. Sonra bulut sohbetinde o dalı açıp
-"`assets/uretilen` altındaki yeni görsellere bak" demen yeterli.
+Robot depoyu kendi `veri/depolar/` klasörüne indirir, her seferinde günceller,
+yalnızca görselleri commit'ler ve gönderir. İlk gönderimde Git bir GitHub giriş
+penceresi açabilir. Adresteki dal silinirse robot bunu söyler; adresi yenilemen
+yeterli.
+
+Depo yerine bilgisayarındaki bir proje klasörünü kullanmak istersen GitHub
+deposu alanını boş bırak; o zaman "Oyun projesi klasörü" kullanılır (klasör bir
+git deposu olmalı; robot o an açık olan dala gönderir).
 
 Daha önce üretilmiş görselleri sonradan göndermek için:
 
@@ -157,6 +165,8 @@ dosyaya kaydeder. Örnek:
 | `claude.mod` | `sohbet`: etkileşimli sohbet açar. `arkaplan`: mesajı gönderir, yanıtı yazdırıp çıkar. |
 | `claude.devamEt` | `true` ise o klasördeki son sohbete devam eder, yoksa yeni sohbet açar. |
 | `claude.mesaj` | Görsel listesinin önüne yazılan talimat. |
+| `git.depoAdresi` | GitHub deposunun ya da içindeki bir klasörün adresi. |
+| `git.dal` | Gönderilecek dal; boşsa adresteki dal, o da yoksa ana dal. |
 | `git.projeKlasoru` / `git.hedefAltKlasor` | Boş bırakılırsa `claude` altındaki değerler kullanılır. |
 | `git.uzak` | Gönderilecek uzak depo adı (varsayılan `origin`). |
 | `git.commitMesaji` | Commit mesajı; `{adet}` yerine görsel sayısı yazılır. |

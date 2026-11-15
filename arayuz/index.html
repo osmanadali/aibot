@@ -7,41 +7,53 @@
 <link rel="icon" href="/robot.ico">
 <style>
   :root {
-    --zemin: #f3efe6;
-    --panel: #fffdf8;
-    --panel-2: #f8f4eb;
-    --murekkep: #1d1a16;
-    --soluk: #6e675c;
-    --cizgi: #e0d9ca;
-    --vurgu: #e4521b;
-    --vurgu-koyu: #c4410f;
+    --zemin: #f2f1f9;
+    --panel: #ffffff;
+    --panel-2: #f4f3fb;
+    --murekkep: #17142b;
+    --soluk: #66627d;
+    --cizgi: #e3e0f0;
+    --cizgi-koyu: #cbc7e0;
+    --vurgu: #5340e0;
+    --vurgu-2: #8a6bff;
+    --vurgu-koyu: #4030bd;
     --vurgu-ustu: #fff;
-    --tamam: #2c8a57;
-    --suruyor: #b97a09;
-    --hata: #c23b3b;
-    --golge: 0 1px 2px rgba(40, 30, 10, .06), 0 8px 24px -12px rgba(40, 30, 10, .18);
-    --dama-a: #ece6d8;
-    --dama-b: #f7f3ea;
+    --nane: #2fd3a6;
+    --tamam: #0c8762;
+    --suruyor: #a86d06;
+    --hata: #c2382e;
+    --golge: 0 1px 2px rgba(35, 22, 112, .05), 0 10px 30px -14px rgba(35, 22, 112, .24);
+    --golge-buyuk: 0 2px 4px rgba(35, 22, 112, .07), 0 22px 48px -20px rgba(35, 22, 112, .4);
+    --dama-a: #e8e6f3;
+    --dama-b: #f7f6fc;
+    --uc-zemin: #141127;
+    --uc-yazi: #d6d2ea;
     --yazi: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --baslik: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, sans-serif;
     --mono: "Cascadia Code", "Cascadia Mono", Consolas, ui-monospace, monospace;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --zemin: #121110;
-      --panel: #1b1917;
-      --panel-2: #232120;
-      --murekkep: #f2ede3;
-      --soluk: #a19a8e;
-      --cizgi: #312e2a;
-      --vurgu: #ff7a45;
-      --vurgu-koyu: #ff9163;
-      --vurgu-ustu: #1c0c04;
-      --tamam: #62c68d;
-      --suruyor: #e8b44d;
-      --hata: #f27676;
-      --golge: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 28px -14px rgba(0, 0, 0, .7);
-      --dama-a: #262422;
-      --dama-b: #1f1d1b;
+      --zemin: #0e0d19;
+      --panel: #181628;
+      --panel-2: #201e33;
+      --murekkep: #efedf9;
+      --soluk: #a29eba;
+      --cizgi: #2b2843;
+      --cizgi-koyu: #3c385a;
+      --vurgu: #8f7bff;
+      --vurgu-2: #b9a0ff;
+      --vurgu-koyu: #ab9cff;
+      --vurgu-ustu: #130c36;
+      --nane: #6ff0c8;
+      --tamam: #63e0b6;
+      --suruyor: #ebb850;
+      --hata: #f47b72;
+      --golge: 0 1px 2px rgba(0, 0, 0, .45), 0 12px 30px -14px rgba(0, 0, 0, .8);
+      --golge-buyuk: 0 2px 4px rgba(0, 0, 0, .5), 0 26px 54px -20px rgba(0, 0, 0, .95);
+      --dama-a: #25223a;
+      --dama-b: #1c1a2e;
+      --uc-zemin: #090813;
     }
   }
 
@@ -53,147 +65,200 @@
     font: 15px/1.5 var(--yazi);
     color: var(--murekkep);
     background-color: var(--zemin);
-    background-image: radial-gradient(color-mix(in srgb, var(--murekkep) 9%, transparent) 1px, transparent 1px);
-    background-size: 22px 22px;
+    background-image:
+      radial-gradient(820px 460px at -6% -12%, color-mix(in srgb, var(--vurgu) 17%, transparent), transparent 62%),
+      radial-gradient(700px 420px at 106% -8%, color-mix(in srgb, var(--nane) 16%, transparent), transparent 60%),
+      radial-gradient(color-mix(in srgb, var(--murekkep) 8%, transparent) 1px, transparent 1px);
+    background-size: auto, auto, 22px 22px;
+    background-attachment: fixed;
   }
-  button, input, textarea, select { font: inherit; color: inherit; }
+  button, input, textarea { font: inherit; color: inherit; }
   button { cursor: pointer; }
   :focus-visible { outline: 2px solid var(--vurgu); outline-offset: 2px; }
+  ::selection { background: color-mix(in srgb, var(--vurgu) 30%, transparent); }
 
   /* ---------- üst şerit */
   .ust {
     position: sticky; top: 0; z-index: 5;
     display: flex; align-items: center; gap: 14px;
-    padding: 12px clamp(16px, 4vw, 40px);
-    background: color-mix(in srgb, var(--zemin) 82%, transparent);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--cizgi);
+    padding: 12px clamp(16px, 4vw, 44px);
+    background: color-mix(in srgb, var(--zemin) 78%, transparent);
+    backdrop-filter: blur(14px) saturate(1.2);
+    border-bottom: 1px solid color-mix(in srgb, var(--cizgi) 80%, transparent);
   }
-  .logo { width: 38px; height: 38px; display: block; flex: none; }
-  .logo .gozler { transform-origin: 128px 136px; }
+  .logo { width: 42px; height: 42px; display: block; flex: none; filter: drop-shadow(0 4px 9px color-mix(in srgb, var(--vurgu) 40%, transparent)); }
+  .logo .gozler { transform-origin: 128px 128px; }
   .calisiyor .logo .gozler { animation: kirp 1.6s infinite; }
   @keyframes kirp { 0%, 44%, 56%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.15); } }
-  .marka { font: 700 15px/1 var(--mono); letter-spacing: .22em; text-transform: uppercase; }
+  .marka { display: grid; gap: 3px; }
+  .marka b { font: 700 15px/1 var(--mono); letter-spacing: .24em; text-transform: uppercase; }
+  .marka span { font-size: 12.5px; line-height: 1; color: var(--soluk); }
   .bosluk { flex: 1; }
   .rozet {
     display: inline-flex; align-items: center; gap: 8px;
-    padding: 6px 12px; border-radius: 999px;
+    padding: 7px 14px; border-radius: 999px;
     border: 1px solid var(--cizgi); background: var(--panel);
-    font-size: 13px; color: var(--soluk);
+    font-size: 13px; font-weight: 600; color: var(--soluk);
+    box-shadow: var(--golge);
   }
   .rozet::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--soluk); opacity: .5; }
-  .calisiyor .rozet { color: var(--murekkep); border-color: color-mix(in srgb, var(--vurgu) 50%, var(--cizgi)); }
+  .calisiyor .rozet { color: var(--vurgu-koyu); border-color: color-mix(in srgb, var(--vurgu) 45%, var(--cizgi)); }
   .calisiyor .rozet::before { background: var(--vurgu); opacity: 1; animation: nabiz 1.2s ease-in-out infinite; }
-  @keyframes nabiz { 50% { transform: scale(1.6); opacity: .35; } }
+  @keyframes nabiz { 50% { transform: scale(1.7); opacity: .3; } }
 
   /* ---------- yerleşim */
   .sayfa {
-    display: grid; gap: 24px;
+    display: grid; gap: 28px;
     grid-template-columns: minmax(0, 1fr);
-    max-width: 1320px; margin: 0 auto;
-    padding: 24px clamp(16px, 4vw, 40px) 64px;
+    max-width: 1400px; margin: 0 auto;
+    padding: 28px clamp(16px, 4vw, 44px) 40px;
   }
-  @media (min-width: 960px) {
-    .sayfa { grid-template-columns: 400px minmax(0, 1fr); align-items: start; }
-    .sol { position: sticky; top: 84px; }
+  @media (min-width: 980px) {
+    .sayfa { grid-template-columns: 410px minmax(0, 1fr); align-items: start; }
+    .sol { position: sticky; top: 92px; max-height: calc(100vh - 108px); overflow-y: auto; margin: -6px; padding: 6px; scrollbar-width: thin; }
   }
-  .sol { display: grid; gap: 16px; }
+  .sol { display: grid; gap: 18px; align-content: start; }
   .kart {
     background: var(--panel);
     border: 1px solid var(--cizgi);
-    border-radius: 16px;
+    border-radius: 18px;
     box-shadow: var(--golge);
   }
   .etiket { font: 600 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--soluk); }
+  .kart-bas { display: flex; align-items: center; gap: 10px; }
+  .kart-bas .nokta { width: 8px; height: 8px; background: var(--nane); box-shadow: 4px 4px 0 var(--vurgu); margin-right: 4px; }
 
   /* ---------- istem kutusu */
-  .yazici { padding: 18px; display: grid; gap: 14px; position: relative; }
-  .yazici.birak { outline: 2px dashed var(--vurgu); outline-offset: -6px; }
-  .istem-sar {
-    border: 1px solid var(--cizgi); border-radius: 12px; background: var(--panel-2);
-    transition: border-color .15s, box-shadow .15s;
+  .yazici { padding: 20px; display: grid; gap: 16px; position: relative; overflow: hidden; }
+  .yazici::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 4px;
+    background: linear-gradient(90deg, var(--vurgu), var(--vurgu-2) 55%, var(--nane));
   }
-  .istem-sar:focus-within { border-color: var(--vurgu); box-shadow: 0 0 0 3px color-mix(in srgb, var(--vurgu) 18%, transparent); }
+  .yazici.birak { outline: 2px dashed var(--vurgu); outline-offset: -7px; }
+  .istem-sar {
+    border: 1.5px solid var(--cizgi); border-radius: 14px; background: var(--panel-2);
+    transition: border-color .15s, box-shadow .15s, background .15s;
+  }
+  .istem-sar:focus-within { border-color: var(--vurgu); background: var(--panel); box-shadow: 0 0 0 4px color-mix(in srgb, var(--vurgu) 16%, transparent); }
   textarea#istem {
-    display: block; width: 100%; min-height: 132px; resize: vertical;
-    padding: 14px 14px 6px; border: 0; background: transparent; outline: none;
+    display: block; width: 100%; min-height: 128px; resize: vertical;
+    padding: 15px 16px 6px; border: 0; background: transparent; outline: none;
     font-size: 16px; line-height: 1.5;
   }
-  textarea#istem::placeholder { color: color-mix(in srgb, var(--soluk) 75%, transparent); }
+  textarea#istem::placeholder, .alan input::placeholder { color: color-mix(in srgb, var(--soluk) 70%, transparent); }
   .araclar { display: flex; align-items: center; gap: 6px; padding: 6px 8px 8px; }
   .simge {
-    display: inline-grid; place-items: center;
+    display: inline-grid; place-items: center; flex: none;
     width: 36px; height: 36px; border-radius: 10px;
     border: 1px solid transparent; background: transparent; color: var(--soluk);
-    transition: background .15s, color .15s;
+    transition: background .15s, color .15s, border-color .15s;
   }
   .simge:hover { background: color-mix(in srgb, var(--murekkep) 8%, transparent); color: var(--murekkep); }
   .simge:disabled { opacity: .35; cursor: not-allowed; }
   .simge svg { width: 19px; height: 19px; }
-  .simge.dinliyor { background: var(--hata); color: #fff; animation: dinle 1.3s ease-in-out infinite; }
+  .araclar .simge { border-color: var(--cizgi); background: var(--panel); }
+  .araclar .simge:hover { border-color: var(--cizgi-koyu); }
+  .simge.dinliyor, .araclar .simge.dinliyor { background: var(--hata); border-color: var(--hata); color: #fff; animation: dinle 1.3s ease-in-out infinite; }
   @keyframes dinle { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--hata) 22%, transparent); } }
-  .ipucu { font-size: 12.5px; color: var(--soluk); margin-left: auto; padding-right: 6px; }
+  .ipucu { font-size: 12px; color: var(--soluk); margin-left: auto; padding-right: 6px; }
+  kbd {
+    font: 600 11px/1 var(--mono); padding: 3px 6px; border-radius: 6px;
+    border: 1px solid var(--cizgi-koyu); border-bottom-width: 2px; background: var(--panel);
+  }
 
   .refler { display: flex; flex-wrap: wrap; gap: 8px; }
   .refler:empty { display: none; }
-  .ref { position: relative; width: 64px; height: 64px; border-radius: 10px; overflow: hidden; border: 1px solid var(--cizgi); }
+  .ref { position: relative; width: 66px; height: 66px; border-radius: 12px; overflow: hidden; border: 1px solid var(--cizgi); box-shadow: var(--golge); }
   .ref img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .ref button {
     position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border-radius: 50%;
-    border: 0; background: rgba(0, 0, 0, .65); color: #fff; font-size: 13px; line-height: 1;
+    border: 0; background: rgba(0, 0, 0, .68); color: #fff; font-size: 13px; line-height: 1;
     display: grid; place-items: center;
   }
 
-  .alan { display: grid; gap: 6px; }
+  .alan { display: grid; gap: 7px; }
   .alan input {
-    width: 100%; padding: 10px 12px; border-radius: 10px;
-    border: 1px solid var(--cizgi); background: var(--panel-2); outline: none;
-    transition: border-color .15s, box-shadow .15s;
+    width: 100%; min-width: 0; padding: 11px 13px; border-radius: 11px;
+    border: 1.5px solid var(--cizgi); background: var(--panel-2); outline: none;
+    transition: border-color .15s, box-shadow .15s, background .15s;
   }
-  .alan input:focus { border-color: var(--vurgu); box-shadow: 0 0 0 3px color-mix(in srgb, var(--vurgu) 18%, transparent); }
-  .alan small { color: var(--soluk); font-size: 12.5px; }
+  .alan input:focus { border-color: var(--vurgu); background: var(--panel); box-shadow: 0 0 0 4px color-mix(in srgb, var(--vurgu) 16%, transparent); }
+  .alan small { color: var(--soluk); font-size: 12.5px; line-height: 1.45; }
+  .alan .etiket { display: flex; align-items: center; gap: 7px; }
+  .alan .etiket svg { width: 14px; height: 14px; color: var(--vurgu); }
+  .yan-yana { display: flex; gap: 8px; }
+  .yan-yana input { flex: 1; }
 
   .dugme {
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    padding: 11px 18px; border-radius: 11px; border: 1px solid transparent;
-    font-weight: 600; white-space: nowrap;
-    transition: transform .08s, background .15s, border-color .15s;
+    padding: 12px 20px; border-radius: 12px; border: 1px solid transparent;
+    font-weight: 650; white-space: nowrap;
+    transition: transform .08s, background .15s, border-color .15s, box-shadow .15s, filter .15s;
   }
   .dugme:active { transform: translateY(1px); }
   .dugme svg { width: 17px; height: 17px; }
-  .dugme.ana { background: var(--vurgu); color: var(--vurgu-ustu); }
-  .dugme.ana:hover { background: var(--vurgu-koyu); }
-  .dugme.ikincil { background: var(--murekkep); color: var(--zemin); }
-  .dugme.ikincil:hover { opacity: .88; }
-  .dugme.dur { background: transparent; border-color: var(--hata); color: var(--hata); }
-  .dugme.dur:hover { background: color-mix(in srgb, var(--hata) 12%, transparent); }
-  .dugme:disabled { opacity: .45; cursor: not-allowed; }
+  .dugme.vurgulu {
+    color: var(--vurgu-ustu);
+    background: linear-gradient(180deg, var(--vurgu-2), var(--vurgu));
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .35) inset, 0 8px 18px -8px color-mix(in srgb, var(--vurgu) 80%, transparent);
+  }
+  .dugme.vurgulu:hover { filter: brightness(1.05) saturate(1.08); }
+  .dugme.koyu { background: var(--murekkep); color: var(--zemin); box-shadow: 0 8px 18px -10px color-mix(in srgb, var(--murekkep) 70%, transparent); }
+  .dugme.koyu:hover { filter: brightness(1.18); }
+  .dugme.dur { background: color-mix(in srgb, var(--hata) 10%, var(--panel)); border-color: var(--hata); color: var(--hata); }
+  .dugme.dur:hover { background: color-mix(in srgb, var(--hata) 18%, var(--panel)); }
+  .dugme.sade { padding: 10px 14px; background: var(--panel); border-color: var(--cizgi-koyu); font-weight: 600; }
+  .dugme.sade:hover { border-color: var(--soluk); }
+  .dugme:disabled { background: var(--panel-2); color: color-mix(in srgb, var(--soluk) 70%, transparent); border-color: var(--cizgi); box-shadow: none; filter: none; cursor: not-allowed; }
+  .dugme.buyuk { padding: 13px 26px; font-size: 15.5px; }
 
-  details.ayar { padding: 0; }
   details.ayar summary {
-    list-style: none; cursor: pointer; padding: 14px 18px;
+    list-style: none; cursor: pointer; padding: 16px 20px;
     display: flex; align-items: center; justify-content: space-between;
   }
   details.ayar summary::-webkit-details-marker { display: none; }
   details.ayar summary::after { content: "+"; font: 400 18px/1 var(--mono); color: var(--soluk); }
   details.ayar[open] summary::after { content: "–"; }
-  .ayar-ic { padding: 0 18px 18px; display: grid; gap: 14px; }
+  .ayar-ic { padding: 2px 20px 20px; display: grid; gap: 18px; }
+  .ayar-not { font-size: 12px; color: var(--soluk); padding-top: 14px; border-top: 1px dashed var(--cizgi); word-break: break-all; }
 
   /* ---------- sıra */
-  .sira-ust { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-bottom: 16px; }
-  .sira-ust h2 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.01em; }
-  .sayim { color: var(--soluk); font-size: 13.5px; }
-  .bitince { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--soluk); }
-  .bitince select {
-    padding: 9px 30px 9px 12px; border-radius: 10px; border: 1px solid var(--cizgi);
-    background: var(--panel); color: var(--murekkep);
+  .sira-ust { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 16px; margin: 2px 0 14px; }
+  .sira-ust h2 { margin: 0; font: 700 30px/1.1 var(--baslik); letter-spacing: -.02em; }
+  .haplar { display: flex; flex-wrap: wrap; gap: 6px; }
+  .hap {
+    display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 600; color: var(--renk);
+    background: color-mix(in srgb, var(--renk) 12%, transparent);
   }
+  .hap b { font: 700 12.5px/1 var(--mono); }
+  .hap.bekliyor { --renk: var(--soluk); } .hap.bitti { --renk: var(--tamam); } .hap.hata { --renk: var(--hata); }
 
-  .izgara { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .kumanda {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px;
+    padding: 12px 12px 12px 18px; margin-bottom: 18px;
+  }
+  .kumanda .etiket { flex: none; }
+  .secim { display: inline-flex; padding: 4px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--cizgi); }
+  .secim button {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 14px; border: 0; border-radius: 9px; background: transparent;
+    font-size: 13.5px; font-weight: 600; color: var(--soluk); white-space: nowrap;
+    transition: background .15s, color .15s, box-shadow .15s;
+  }
+  .secim button svg { width: 15px; height: 15px; }
+  .secim button:hover { color: var(--murekkep); }
+  .secim button[aria-checked="true"] { background: var(--panel); color: var(--murekkep); box-shadow: 0 1px 2px rgba(0, 0, 0, .12), 0 0 0 1px var(--cizgi); }
+  .secim button[aria-checked="true"] svg { color: var(--vurgu); }
+  .secim.kapali { opacity: .55; pointer-events: none; }
+
+  .izgara { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
   @media (max-width: 520px) { .izgara { gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  .is { overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+  .is { overflow: hidden; display: flex; flex-direction: column; min-width: 0; transition: transform .18s, box-shadow .18s, border-color .18s; }
+  .is:hover { transform: translateY(-3px); box-shadow: var(--golge-buyuk); border-color: var(--cizgi-koyu); }
+  .is.uretiliyor { border-color: color-mix(in srgb, var(--suruyor) 55%, var(--cizgi)); }
   .onizleme {
-    position: relative; aspect-ratio: 1; display: grid; place-items: center;
+    position: relative; aspect-ratio: 1; display: grid; place-items: center; overflow: hidden;
     background-color: var(--dama-b);
     background-image:
       linear-gradient(45deg, var(--dama-a) 25%, transparent 25%, transparent 75%, var(--dama-a) 75%),
@@ -202,25 +267,26 @@
     border-bottom: 1px solid var(--cizgi);
   }
   .onizleme > a, .onizleme > a img { display: block; width: 100%; height: 100%; }
-  .onizleme > a img { object-fit: contain; }
-  .onizleme .bos { color: var(--soluk); opacity: .55; }
-  .onizleme .bos svg { width: 44px; height: 44px; }
+  .onizleme > a img { object-fit: contain; transition: transform .25s; }
+  .is:hover .onizleme > a img { transform: scale(1.04); }
+  .onizleme .bos { color: var(--soluk); opacity: .5; }
+  .onizleme .bos svg { width: 46px; height: 46px; }
   .onizleme.uretiliyor::after {
     content: ""; position: absolute; inset: 0;
-    background: linear-gradient(110deg, transparent 30%, color-mix(in srgb, var(--vurgu) 28%, transparent) 50%, transparent 70%);
+    background: linear-gradient(110deg, transparent 30%, color-mix(in srgb, var(--vurgu) 30%, transparent) 50%, transparent 70%);
     background-size: 220% 100%; animation: tara 1.5s linear infinite;
   }
   @keyframes tara { from { background-position: 120% 0; } to { background-position: -120% 0; } }
   .onizleme .ek-sayisi {
     position: absolute; right: 8px; bottom: 8px; padding: 2px 8px; border-radius: 999px;
-    background: rgba(0, 0, 0, .65); color: #fff; font: 600 11.5px/1.6 var(--mono);
+    background: rgba(0, 0, 0, .68); color: #fff; font: 600 11.5px/1.6 var(--mono);
   }
   .kucuk-refler { position: absolute; left: 8px; bottom: 8px; display: flex; }
   .kucuk-refler img {
-    width: 34px; height: 34px; object-fit: cover; border-radius: 8px;
-    border: 2px solid var(--panel); margin-right: -10px; background: var(--panel);
+    width: 36px; height: 36px; object-fit: cover; border-radius: 9px;
+    border: 2px solid var(--panel); margin-right: -10px; background: var(--panel); box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
   }
-  .is-govde { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
+  .is-govde { padding: 13px 15px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
   .is-bas { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .is-ad { font: 600 13px/1.3 var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
   .is-istem {
@@ -246,22 +312,44 @@
   .is-eylem .sil:hover { color: var(--hata); }
 
   .bos-sira {
-    grid-column: 1 / -1; padding: 56px 24px; text-align: center; color: var(--soluk);
-    border: 1.5px dashed var(--cizgi); border-radius: 16px; background: color-mix(in srgb, var(--panel) 60%, transparent);
+    grid-column: 1 / -1; padding: 44px 24px 40px; text-align: center; color: var(--soluk);
+    border: 1.5px dashed var(--cizgi-koyu); border-radius: 22px;
+    background: color-mix(in srgb, var(--panel) 62%, transparent);
+    display: grid; justify-items: center; gap: 6px;
   }
-  .bos-sira strong { display: block; color: var(--murekkep); font-size: 17px; margin-bottom: 4px; }
+  .maskot { width: 104px; height: 104px; margin-bottom: 10px; filter: drop-shadow(0 16px 22px color-mix(in srgb, var(--vurgu) 38%, transparent)); animation: suzul 4.5s ease-in-out infinite; }
+  .maskot .gozler2 { transform-origin: 128px 128px; animation: kirp 4.5s infinite; }
+  @keyframes suzul { 50% { transform: translateY(-8px) rotate(-2deg); } }
+  .bos-sira strong { color: var(--murekkep); font: 700 21px/1.2 var(--baslik); letter-spacing: -.01em; }
+  .adimlar { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 22px; margin: 14px 0 4px; font-size: 13.5px; }
+  .adimlar span { display: inline-flex; align-items: center; gap: 8px; }
+  .adimlar b {
+    display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+    font: 700 11.5px/1 var(--mono); color: var(--vurgu-ustu); background: var(--vurgu);
+  }
+  .adimlar span:nth-child(3) b { background: var(--nane); color: #0b2a22; }
+  .ornekler { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; max-width: 720px; }
+  .ornekler .etiket { width: 100%; margin-bottom: 2px; }
+  .ornek {
+    padding: 8px 14px; border-radius: 999px; border: 1px solid var(--cizgi-koyu); background: var(--panel);
+    font-size: 13px; color: var(--murekkep); transition: border-color .15s, transform .1s, box-shadow .15s;
+  }
+  .ornek:hover { border-color: var(--vurgu); box-shadow: 0 0 0 3px color-mix(in srgb, var(--vurgu) 14%, transparent); transform: translateY(-1px); }
 
   /* ---------- günlük */
-  details.gunluk { margin-top: 24px; }
-  details.gunluk summary { cursor: pointer; padding: 12px 16px; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+  details.gunluk { margin-top: 26px; overflow: hidden; background: var(--uc-zemin); border-color: color-mix(in srgb, var(--uc-zemin) 70%, var(--cizgi-koyu)); }
+  details.gunluk summary { cursor: pointer; padding: 13px 18px; list-style: none; display: flex; align-items: center; gap: 10px; color: var(--uc-yazi); }
   details.gunluk summary::-webkit-details-marker { display: none; }
-  details.gunluk summary::after { content: "+"; font: 400 18px/1 var(--mono); color: var(--soluk); }
+  details.gunluk summary .etiket { color: var(--uc-yazi); opacity: .8; }
+  details.gunluk summary i { width: 9px; height: 9px; border-radius: 50%; background: #5d574d; }
+  details.gunluk summary i:nth-child(1) { background: #ff6b5e; } details.gunluk summary i:nth-child(2) { background: #f5bd4f; } details.gunluk summary i:nth-child(3) { background: #5fcf65; margin-right: 6px; }
+  details.gunluk summary::after { content: "+"; margin-left: auto; font: 400 18px/1 var(--mono); opacity: .6; }
   details.gunluk[open] summary::after { content: "–"; }
-  details.gunluk pre {
-    margin: 0; padding: 14px 16px; max-height: 260px; overflow: auto;
-    border-top: 1px solid var(--cizgi);
-    font: 12.5px/1.65 var(--mono); color: var(--soluk); white-space: pre-wrap; word-break: break-word;
+  #gunluk {
+    margin: 0; padding: 4px 18px 16px; max-height: 280px; overflow: auto; scrollbar-width: thin;
+    font: 12.5px/1.7 var(--mono); color: var(--uc-yazi); white-space: pre-wrap; word-break: break-word;
   }
+  #gunluk div.iyi { color: #7fd6a0; } #gunluk div.kotu { color: #ff8f85; } #gunluk div.ara { color: #8d8578; }
 
   .alt { text-align: center; padding: 0 16px 28px; font: 12px/1 var(--mono); color: var(--soluk); opacity: .8; }
 
@@ -285,31 +373,19 @@
 <header class="ust">
   <svg class="logo" viewBox="0 0 256 256" aria-hidden="true">
   <defs>
-    <linearGradient id="zemin" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ff8a55"/>
-      <stop offset="1" stop-color="#de4a16"/>
-    </linearGradient>
-    <linearGradient id="kafa" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fffaf2"/>
-      <stop offset="1" stop-color="#f6e7d4"/>
+    <linearGradient id="zemin" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5a43ea"/>
+      <stop offset="1" stop-color="#231670"/>
     </linearGradient>
   </defs>
-  <rect x="8" y="8" width="240" height="240" rx="58" fill="url(#zemin)"/>
-  <rect x="8.5" y="8.5" width="239" height="239" rx="57.5" fill="none" stroke="#fff" stroke-opacity=".22"/>
-  <path d="M128 84V60" stroke="#fff6ea" stroke-width="11" stroke-linecap="round"/>
-  <circle cx="128" cy="50" r="13" fill="#fff6ea"/>
-  <rect x="34" y="122" width="26" height="42" rx="11" fill="#f6e7d4"/>
-  <rect x="196" y="122" width="26" height="42" rx="11" fill="#f6e7d4"/>
-  <rect x="52" y="82" width="152" height="122" rx="38" fill="url(#kafa)"/>
-  <g class="gozler" fill="#1d1a16">
-    <circle cx="99" cy="136" r="17"/>
-    <circle cx="157" cy="136" r="17"/>
+  <rect width="256" height="256" rx="58" fill="url(#zemin)"/>
+  <rect x=".5" y=".5" width="255" height="255" rx="57.5" fill="none" stroke="#fff" stroke-opacity=".16"/>
+  <g shape-rendering="crispEdges">
+    <rect x="48" y="48" width="16" height="16" fill="#b5ffe6"/><rect x="192" y="48" width="16" height="16" fill="#b5ffe6"/><rect x="48" y="64" width="160" height="16" fill="#b5ffe6"/><rect x="32" y="80" width="192" height="16" fill="#6ff0c8"/><rect x="32" y="96" width="16" height="16" fill="#6ff0c8"/><rect x="48" y="96" width="160" height="16" fill="#1a1346"/><rect x="208" y="96" width="16" height="16" fill="#6ff0c8"/><rect x="32" y="112" width="16" height="16" fill="#6ff0c8"/><rect x="48" y="112" width="16" height="16" fill="#1a1346"/><rect x="96" y="112" width="64" height="16" fill="#1a1346"/><rect x="192" y="112" width="16" height="16" fill="#1a1346"/><rect x="208" y="112" width="16" height="16" fill="#6ff0c8"/><rect x="32" y="128" width="16" height="16" fill="#6ff0c8"/><rect x="48" y="128" width="16" height="16" fill="#1a1346"/><rect x="96" y="128" width="64" height="16" fill="#1a1346"/><rect x="192" y="128" width="16" height="16" fill="#1a1346"/><rect x="208" y="128" width="16" height="16" fill="#6ff0c8"/><rect x="32" y="144" width="16" height="16" fill="#6ff0c8"/><rect x="48" y="144" width="160" height="16" fill="#1a1346"/><rect x="208" y="144" width="16" height="16" fill="#6ff0c8"/><rect x="32" y="160" width="192" height="16" fill="#6ff0c8"/><rect x="32" y="176" width="64" height="16" fill="#6ff0c8"/><rect x="96" y="176" width="64" height="16" fill="#1a1346"/><rect x="160" y="176" width="64" height="16" fill="#6ff0c8"/><rect x="48" y="192" width="160" height="16" fill="#3ccba2"/>
+    <g class="gozler" fill="#ffd84a"><rect x="64" y="112" width="32" height="16"/><rect x="160" y="112" width="32" height="16"/><rect x="64" y="128" width="32" height="16"/><rect x="160" y="128" width="32" height="16"/></g>
   </g>
-  <circle cx="105" cy="130" r="5" fill="#fff"/>
-  <circle cx="163" cy="130" r="5" fill="#fff"/>
-  <rect x="104" y="170" width="48" height="10" rx="5" fill="#e4521b"/>
 </svg>
-  <div class="marka">Robot</div>
+  <div class="marka"><b>Robot</b><span>Görsel atölyesi</span></div>
   <div class="bosluk"></div>
   <div class="rozet" id="rozet">Boşta</div>
 </header>
@@ -317,7 +393,7 @@
 <main class="sayfa">
   <div class="sol">
     <section class="kart yazici" id="yazici">
-      <div class="etiket">Yeni görsel</div>
+      <div class="kart-bas"><span class="nokta"></span><span class="etiket">Yeni görsel</span></div>
       <div class="istem-sar">
         <textarea id="istem" placeholder="Ne üretelim? Yaz, mikrofona söyle ya da bir referans görsel bırak."></textarea>
         <div class="araclar">
@@ -327,7 +403,7 @@
           <button class="simge" id="ekle-ref" type="button" title="Referans görsel ekle" aria-label="Referans görsel ekle">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m4 17 5-5 4 4 3-3 4 4"/></svg>
           </button>
-          <span class="ipucu">Ctrl + Enter ile ekle</span>
+          <span class="ipucu"><kbd>Ctrl</kbd> <kbd>Enter</kbd> ile ekle</span>
         </div>
       </div>
       <input type="file" id="dosya" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
@@ -336,26 +412,34 @@
         <span class="etiket">Dosya adı · isteğe bağlı</span>
         <input id="ad" placeholder="ör. kahraman" autocomplete="off">
       </label>
-      <button class="dugme ikincil" id="siraya-ekle" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      <button class="dugme vurgulu" id="siraya-ekle" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         Sıraya ekle
       </button>
     </section>
 
-    <details class="kart ayar">
-      <summary><span class="etiket">Ayarlar</span></summary>
+    <details class="kart ayar" open>
+      <summary><span class="kart-bas"><span class="nokta"></span><span class="etiket">Ayarlar</span></span></summary>
       <div class="ayar-ic">
         <label class="alan">
-          <span class="etiket">Ortak stil</span>
+          <span class="etiket"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.2 5.6L20 9.3l-4.4 3.9 1.3 5.8L12 16l-4.9 3 1.3-5.8L4 9.3l5.8-.7z"/></svg>Ortak stil</span>
           <input id="son-ek" placeholder="ör. pixel-art, şeffaf arka plan" autocomplete="off">
           <small>Her istemin sonuna eklenir.</small>
         </label>
-        <label class="alan">
-          <span class="etiket">Oyun projesi klasörü</span>
-          <input id="proje" placeholder="C:\Oyunlar\benim-oyunum" autocomplete="off" spellcheck="false">
-          <small>Claude Code ya da GitHub'a gönderirken kullanılır.</small>
-        </label>
-        <small id="cikti-yeri" style="color: var(--soluk); font-size: 12.5px"></small>
+        <div class="alan">
+          <label class="etiket" for="depo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"/></svg>GitHub deposu</label>
+          <input id="depo" placeholder="https://github.com/kullanici/oyunum/tree/main/gorseller" autocomplete="off" spellcheck="false">
+          <small>"GitHub" seçiliyken görseller buraya gönderilir. GitHub'da görsellerin duracağı klasörü açıp tarayıcının adres çubuğundaki adresi yapıştır; dal ve klasör adresten okunur.</small>
+        </div>
+        <div class="alan">
+          <label class="etiket" for="proje"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Oyun projesi klasörü</label>
+          <div class="yan-yana">
+            <input id="proje" placeholder="C:\Oyunlar\benim-oyunum" autocomplete="off" spellcheck="false">
+            <button class="dugme sade" id="klasor-sec" type="button" hidden>Seç</button>
+          </div>
+          <small>"Claude Code" seçiliyken sohbet bu klasörde açılır ve görseller buraya kopyalanır.</small>
+        </div>
+        <div class="ayar-not" id="cikti-yeri"></div>
       </div>
     </details>
   </div>
@@ -363,28 +447,42 @@
   <section>
     <div class="sira-ust">
       <h2>Sıra</h2>
-      <span class="sayim" id="sayim"></span>
+      <div class="haplar" id="haplar"></div>
+    </div>
+    <div class="kart kumanda">
+      <span class="etiket">Bitince</span>
+      <div class="secim" id="sonra" role="radiogroup" aria-label="Görseller bitince ne yapılsın">
+        <button type="button" role="radio" data-deger="yok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6"/></svg>Yalnızca kaydet</button>
+        <button type="button" role="radio" data-deger="claude"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>Claude Code</button>
+        <button type="button" role="radio" data-deger="github"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>GitHub</button>
+      </div>
       <span class="bosluk"></span>
-      <label class="bitince">Bitince
-        <select id="sonra">
-          <option value="yok">hiçbir şey yapma</option>
-          <option value="claude">Claude Code sohbetine gönder</option>
-          <option value="github">GitHub'a gönder</option>
-        </select>
-      </label>
-      <button class="dugme ana" id="baslat" type="button"></button>
+      <button class="dugme koyu buyuk" id="baslat" type="button"></button>
     </div>
     <div class="izgara" id="izgara"></div>
     <details class="kart gunluk" id="gunluk-kutu">
-      <summary><span class="etiket">Günlük</span></summary>
-      <pre id="gunluk"></pre>
+      <summary><i></i><i></i><i></i><span class="etiket">Günlük</span></summary>
+      <div id="gunluk"></div>
     </details>
   </section>
 </main>
 
 <footer class="alt" id="surum"></footer>
-
 <div class="bildirim" id="bildirim" role="status"></div>
+<template id="maskot"><svg class="maskot" viewBox="0 0 256 256" aria-hidden="true">
+  <defs>
+    <linearGradient id="zemin2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5a43ea"/>
+      <stop offset="1" stop-color="#231670"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="58" fill="url(#zemin2)"/>
+  <rect x=".5" y=".5" width="255" height="255" rx="57.5" fill="none" stroke="#fff" stroke-opacity=".16"/>
+  <g shape-rendering="crispEdges">
+    <rect x="48" y="48" width="16" height="16" fill="#b5ffe6"/><rect x="192" y="48" width="16" height="16" fill="#b5ffe6"/><rect x="48" y="64" width="160" height="16" fill="#b5ffe6"/><rect x="32" y="80" width="192" height="16" fill="#6ff0c8"/><rect x="32" y="96" width="16" height="16" fill="#6ff0c8"/><rect x="48" y="96" width="160" height="16" fill="#1a1346"/><rect x="208" y="96" width="16" height="16" fill="#6ff0c8"/><rect x="32" y="112" width="16" height="16" fill="#6ff0c8"/><rect x="48" y="112" width="16" height="16" fill="#1a1346"/><rect x="96" y="112" width="64" height="16" fill="#1a1346"/><rect x="192" y="112" width="16" height="16" fill="#1a1346"/><rect x="208" y="112" width="16" height="16" fill="#6ff0c8"/><rect x="32" y="128" width="16" height="16" fill="#6ff0c8"/><rect x="48" y="128" width="16" height="16" fill="#1a1346"/><rect x="96" y="128" width="64" height="16" fill="#1a1346"/><rect x="192" y="128" width="16" height="16" fill="#1a1346"/><rect x="208" y="128" width="16" height="16" fill="#6ff0c8"/><rect x="32" y="144" width="16" height="16" fill="#6ff0c8"/><rect x="48" y="144" width="160" height="16" fill="#1a1346"/><rect x="208" y="144" width="16" height="16" fill="#6ff0c8"/><rect x="32" y="160" width="192" height="16" fill="#6ff0c8"/><rect x="32" y="176" width="64" height="16" fill="#6ff0c8"/><rect x="96" y="176" width="64" height="16" fill="#1a1346"/><rect x="160" y="176" width="64" height="16" fill="#6ff0c8"/><rect x="48" y="192" width="160" height="16" fill="#3ccba2"/>
+    <g class="gozler2" fill="#ffd84a"><rect x="64" y="112" width="32" height="16"/><rect x="160" y="112" width="32" height="16"/><rect x="64" y="128" width="32" height="16"/><rect x="160" y="128" width="32" height="16"/></g>
+  </g>
+</svg></template>
 
 <script>
   const $ = (secici) => document.querySelector(secici);
@@ -397,6 +495,11 @@
     uyari: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2.8 19.5h18.4L12 4zM12 10v4.5M12 17.2v.3"/></svg>',
   };
   const DURUM_ADI = { bekliyor: 'Bekliyor', uretiliyor: 'Üretiliyor', bitti: 'Hazır', hata: 'Olmadı' };
+  const ORNEKLER = [
+    'Pixel-art tarzında kılıçlı küçük bir şövalye, şeffaf arka plan',
+    'Yandan görünümlü orman platform oyunu arka planı',
+    'Altın dolu ahşap hazine sandığı simgesi',
+  ];
 
   // Küçük bir öğe kurucu: kullanıcı metni her zaman düz yazı olarak eklenir.
   function h(etiket, ozellikler = {}, ...cocuklar) {
@@ -430,6 +533,7 @@
   // ---------- durum ve çizim
   let durum = null;
   let sonCizim = '';
+  let sonGunluk = '';
   let ayarlarDolduruldu = false;
 
   function isKarti(is) {
@@ -443,7 +547,7 @@
     if (is.referanslar.length) {
       onizleme.append(h('div', { class: 'kucuk-refler', title: 'Referans görseller' }, is.referanslar.slice(0, 3).map((adres) => h('img', { src: adres, alt: '' }))));
     }
-    return h('article', { class: 'kart is' },
+    return h('article', { class: `kart is ${is.durum}` },
       onizleme,
       h('div', { class: 'is-govde' },
         h('div', { class: 'is-bas' }, h('span', { class: 'is-ad', title: is.ad }, is.ad), h('span', { class: `cip ${is.durum}` }, DURUM_ADI[is.durum] || is.durum)),
@@ -459,41 +563,65 @@
     );
   }
 
+  function bosSira() {
+    return h('div', { class: 'bos-sira' },
+      $('#maskot').content.cloneNode(true),
+      h('strong', {}, 'Sıra boş'),
+      'İlk görselini ekleyerek başla.',
+      h('div', { class: 'adimlar' },
+        h('span', {}, h('b', {}, '1'), 'İstemi yaz ya da söyle'),
+        h('span', {}, h('b', {}, '2'), 'Sıraya ekle'),
+        h('span', {}, h('b', {}, '3'), 'Başlat')
+      ),
+      h('div', { class: 'ornekler' },
+        h('span', { class: 'etiket' }, 'Ya da bir örnekle dene'),
+        ORNEKLER.map((ornek) => h('button', { class: 'ornek', type: 'button', onclick: () => { $('#istem').value = ornek; $('#istem').focus(); } }, ornek))
+      )
+    );
+  }
+
   function ciz() {
     document.body.classList.toggle('calisiyor', durum.calisiyor);
     $('#rozet').textContent = durum.calisiyor ? 'Çalışıyor' : 'Boşta';
 
     const say = (d) => durum.isler.filter((is) => is.durum === d).length;
-    const bekleyen = say('bekliyor') + say('hata') + say('uretiliyor');
-    $('#sayim').textContent = durum.isler.length ? `${bekleyen} bekliyor · ${say('bitti')} hazır` : '';
+    const bekleyen = say('bekliyor') + say('uretiliyor');
+    const yapilacak = bekleyen + say('hata');
+    $('#haplar').replaceChildren(...[['bekliyor', bekleyen, 'bekliyor'], ['bitti', say('bitti'), 'hazır'], ['hata', say('hata'), 'olmadı']]
+      .filter(([, adet]) => adet)
+      .map(([sinif, adet, ad]) => h('span', { class: `hap ${sinif}` }, h('b', {}, String(adet)), ad)));
 
     const dugme = $('#baslat');
-    dugme.className = `dugme ${durum.calisiyor ? 'dur' : 'ana'}`;
+    dugme.className = `dugme buyuk ${durum.calisiyor ? 'dur' : 'koyu'}`;
     dugme.innerHTML = durum.calisiyor ? `${SIMGE.dur} Durdur` : `${SIMGE.oynat} Başlat`;
-    dugme.disabled = !durum.calisiyor && !bekleyen;
-    $('#sonra').disabled = durum.calisiyor;
+    dugme.disabled = !durum.calisiyor && !yapilacak;
+    $('#sonra').classList.toggle('kapali', durum.calisiyor);
 
     const imza = JSON.stringify(durum.isler);
     if (imza !== sonCizim) {
       sonCizim = imza;
-      const izgara = $('#izgara');
-      izgara.replaceChildren(
-        ...(durum.isler.length
-          ? durum.isler.map(isKarti)
-          : [h('div', { class: 'bos-sira' }, h('strong', {}, 'Sıra boş'), 'Soldaki kutuya bir istem yazıp sıraya ekle.')])
-      );
+      $('#izgara').replaceChildren(...(durum.isler.length ? durum.isler.map(isKarti) : [bosSira()]));
     }
 
-    const gunluk = $('#gunluk');
-    const metin = durum.gunluk.join('\n') || 'Henüz bir şey çalışmadı.';
-    if (gunluk.textContent !== metin) {
+    const metin = durum.gunluk.join('\n');
+    if (metin !== sonGunluk) {
+      sonGunluk = metin;
+      const gunluk = $('#gunluk');
       const dipte = gunluk.scrollTop + gunluk.clientHeight >= gunluk.scrollHeight - 30;
-      gunluk.textContent = metin;
+      const satirlar = durum.gunluk.length ? durum.gunluk : ['Henüz bir şey çalışmadı.'];
+      gunluk.replaceChildren(...satirlar.map((satir) => h('div', {
+        class: /HATA|BAŞARISIZ|olmadı|hatayla/.test(satir) ? 'kotu' : /kaydedildi|Gönderildi|✔|—— bitti/.test(satir) ? 'iyi' : /^——|atlanıyor|durduruldu/.test(satir) ? 'ara' : '',
+      }, satir)));
       if (dipte) gunluk.scrollTop = gunluk.scrollHeight;
     }
 
     if (!ayarlarDolduruldu) {
       ayarlarDolduruldu = true;
+      $('#son-ek').value = durum.ayarlar.sonEk;
+      $('#proje').value = durum.ayarlar.projeKlasoru;
+      $('#depo').value = durum.ayarlar.depoAdresi;
+      $('#klasor-sec').hidden = !durum.ayarlar.klasorSecilebilir;
+      $('#cikti-yeri').textContent = `Görseller buraya kaydedilir: ${durum.ayarlar.ciktiKlasoru}`;
       if (durum.surum.kisa) $('#surum').textContent = `Sürüm ${durum.surum.kisa}`;
       if (durum.surum.guncellendi) {
         // Güncelleme bildirimi her sürüm için bir kez gösterilir.
@@ -501,9 +629,6 @@
         try { gosterildi = sessionStorage.getItem('guncellendi') === durum.surum.kisa; sessionStorage.setItem('guncellendi', durum.surum.kisa); } catch { /* önemli değil */ }
         if (!gosterildi) bildir('Robot yeni sürüme güncellendi.');
       }
-      $('#son-ek').value = durum.ayarlar.sonEk;
-      $('#proje').value = durum.ayarlar.projeKlasoru;
-      $('#cikti-yeri').textContent = `Görseller buraya kaydedilir: ${durum.ayarlar.ciktiKlasoru}`;
     }
   }
 
@@ -521,38 +646,56 @@
 
   async function eylem(yol, govde) {
     try {
-      durum = await api(yol, govde);
+      const yanit = await api(yol, govde);
+      durum = yanit;
       ciz();
-      return true;
+      return yanit;
     } catch (hata) {
       bildir(hata.message, true);
-      return false;
+      return null;
     }
   }
 
-  // ---------- başlat / durdur
-  const sonraSecimi = $('#sonra');
-  try { sonraSecimi.value = localStorage.getItem('sonra') || 'yok'; } catch { /* saklama kapalı olabilir */ }
-  sonraSecimi.addEventListener('change', () => { try { localStorage.setItem('sonra', sonraSecimi.value); } catch { /* önemli değil */ } });
+  // ---------- bitince seçimi, başlat / durdur
+  let sonra = 'yok';
+  try { sonra = localStorage.getItem('sonra') || 'yok'; } catch { /* saklama kapalı olabilir */ }
+  function sonrayiCiz() {
+    for (const dugme of document.querySelectorAll('#sonra button')) dugme.setAttribute('aria-checked', String(dugme.dataset.deger === sonra));
+  }
+  for (const dugme of document.querySelectorAll('#sonra button')) {
+    dugme.addEventListener('click', () => {
+      sonra = dugme.dataset.deger;
+      try { localStorage.setItem('sonra', sonra); } catch { /* önemli değil */ }
+      sonrayiCiz();
+    });
+  }
+  sonrayiCiz();
 
   $('#baslat').addEventListener('click', async () => {
     if (durum && durum.calisiyor) {
       await eylem('/api/durdur', {});
       return;
     }
-    if (await eylem('/api/baslat', { sonra: sonraSecimi.value || 'yok' })) {
+    if (await eylem('/api/baslat', { sonra })) {
       $('#gunluk-kutu').open = true;
-      bildir(sonraSecimi.value === 'claude' ? 'Başladı. Bitince Claude Code sohbeti robotun siyah penceresinde açılır.' : 'Başladı.');
+      bildir(sonra === 'claude' ? 'Başladı. Bitince Claude Code sohbeti ayrı bir pencerede açılır.' : 'Başladı.');
       yenile();
     }
   });
 
   // ---------- ayarlar
-  for (const [secici, alan] of [['#son-ek', 'sonEk'], ['#proje', 'projeKlasoru']]) {
+  for (const [secici, alan] of [['#son-ek', 'sonEk'], ['#proje', 'projeKlasoru'], ['#depo', 'depoAdresi']]) {
     $(secici).addEventListener('change', async (olay) => {
       if (await eylem('/api/ayarlar', { [alan]: olay.target.value })) bildir('Kaydedildi.');
     });
   }
+  $('#klasor-sec').addEventListener('click', async () => {
+    const yanit = await eylem('/api/klasor-sec', {});
+    if (yanit && yanit.klasor) {
+      $('#proje').value = yanit.klasor;
+      if (await eylem('/api/ayarlar', { projeKlasoru: yanit.klasor })) bildir('Kaydedildi.');
+    }
+  });
 
   // ---------- referans görseller
   let refler = []; // { ad, veri (base64), adres (önizleme) }
@@ -592,6 +735,7 @@
   yazici.addEventListener('drop', (olay) => refEkle([...olay.dataTransfer.files]));
 
   // ---------- sıraya ekle
+  let tanima = null;
   async function sirayaEkle() {
     const istem = $('#istem').value.trim();
     if (!istem) { $('#istem').focus(); bildir('Önce bir istem yaz ya da söyle.', true); return; }
@@ -611,7 +755,6 @@
   // ---------- sesle yazma
   const SesTanima = window.SpeechRecognition || window.webkitSpeechRecognition;
   const mikrofon = $('#mikrofon');
-  let tanima = null;
   if (!SesTanima) {
     mikrofon.disabled = true;
     mikrofon.title = 'Bu tarayıcı sesle yazmayı desteklemiyor. Chrome ya da Edge kullan.';
