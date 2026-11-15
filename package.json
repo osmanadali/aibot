@@ -1,0 +1,17 @@
+{
+  "name": "robot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bilgisayarda tekrarlayan isleri yapan kisisel robot",
+  "main": "robot.js",
+  "scripts": {
+    "robot": "node robot.js",
+    "test": "node test/deneme.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "playwright-core": "^1.48.0"
+  }
+}

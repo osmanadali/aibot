@@ -1,0 +1,54 @@
+{
+  "tarayici": {
+    "yol": "",
+    "port": 9222,
+    "profilKlasoru": "tarayici-profili",
+    "ekArgumanlar": []
+  },
+  "chatgpt": {
+    "adres": "https://chatgpt.com/",
+    "onEk": "Şu görseli üret: ",
+    "sonEk": "",
+    "gorselBeklemeDakika": 6,
+    "metinSonrasiSaniye": 90,
+    "kararliSaniye": 8,
+    "istemArasiSaniye": 15,
+    "denemeSayisi": 2,
+    "denemeArasiDakika": 15,
+    "enKucukGorselPx": 256,
+    "seciciler": {
+      "istemKutusu": "#prompt-textarea",
+      "gonderDugmesi": "[data-testid='send-button']",
+      "durdurDugmesi": "[data-testid='stop-button']",
+      "asistanMesaji": "[data-message-author-role='assistant']",
+      "girisDugmesi": "[data-testid='login-button']"
+    }
+  },
+  "gorselUret": {
+    "istemDosyasi": "istemler.txt",
+    "ciktiKlasoru": "cikti"
+  },
+  "claude": {
+    "projeKlasoru": "",
+    "hedefAltKlasor": "assets/uretilen",
+    "mod": "sohbet",
+    "devamEt": true,
+    "mesaj": "Robot şu görselleri üretip projeye ekledi. Hepsine bak ve kısaca ne olduklarını özetle; sonra ne yapmamı istediğimi sor."
+  },
+  "git": {
+    "projeKlasoru": "",
+    "hedefAltKlasor": "",
+    "uzak": "origin",
+    "commitMesaji": "Robot: {adet} görsel eklendi"
+  },
+  "akislar": {
+    "oyun-gorselleri": [
+      "gorsel-uret",
+      "claude-gonder"
+    ],
+    "oyun-gorselleri-github": [
+      "gorsel-uret",
+      "git-gonder"
+    ]
+  }
+}

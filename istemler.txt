@@ -1,0 +1,6 @@
+# Her satır bir görsel istemidir. # ile başlayan satırlar ve boş satırlar atlanır.
+# Dosya adını kendin vermek istersen:   dosya-adi | istem
+# Ortak stil cümlesini her satıra yazmak yerine ayarlar.json içindeki "sonEk" alanına koyabilirsin.
+
+kahraman | Pixel-art tarzında, elinde kılıç tutan küçük bir şövalye, şeffaf arka plan
+dusman-slime | Pixel-art tarzında yeşil bir slime canavarı, şeffaf arka plan
