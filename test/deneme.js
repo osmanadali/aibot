@@ -273,6 +273,9 @@ async function ana() {
     fs.writeFileSync(path.join(kurulum, 'arayuz', 'eski.txt'), 'yeni sürümde yok');
     fs.mkdirSync(path.join(kurulum, 'veri'));
     fs.writeFileSync(path.join(kurulum, 'veri', 'kurulu-dosyalar.json'), JSON.stringify(['arayuz/eski.txt', 'README.md']));
+    // Yarıda kalmış eski bir güncellemenin artıkları yeni güncellemeyi bozmamalı.
+    fs.mkdirSync(path.join(kurulum, 'veri', 'guncelleme', 'yeni', 'yarim-kalan'), { recursive: true });
+    fs.mkdirSync(path.join(kurulum, 'veri', 'guncelleme-123', 'yeni', 'yarim-kalan'), { recursive: true });
 
     const paketKoku = path.join(gecici, 'paket');
     const yeniKopya = path.join(paketKoku, `aibot-${yeniSurum}`);
@@ -304,6 +307,7 @@ async function ana() {
       kontrol(!fs.existsSync(path.join(kurulum, 'arayuz', 'eski.txt')), 'depodan silinen dosya kaldırıldı');
       kontrol(oku('istemler.txt') === 'benim istemim' && JSON.parse(oku('ayarlar.yerel.json')).chatgpt.sonEk === 'benim stilim', 'kullanıcının istemleri ve ayarları korundu');
       kontrol(oku('surum.txt').trim() === yeniSurum, 'kurulu sürüm kaydedildi');
+      kontrol(!fs.readdirSync(path.join(kurulum, 'veri')).some((ad) => ad.startsWith('guncelleme')), 'geçici dosyalar ve eski artıklar temizlendi');
       sonuc = await robotCalistir(['guncelle'], kurulum);
       kontrol(sonuc.status === 0 && /Robot güncel/.test(sonuc.stdout), 'tekrar denetlenince güncel olduğu görüldü');
       depo.close();

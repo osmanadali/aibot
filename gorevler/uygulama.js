@@ -12,7 +12,8 @@ async function calistir(baglam) {
   const { secenekler, gunluk } = baglam;
 
   if (!secenekler.guncellemeden) {
-    const sonuc = await guncelle(baglam);
+    // Güncelleme sırasındaki hiçbir hata robotun açılmasını engellememeli.
+    const sonuc = await guncelle(baglam).catch((hata) => ({ durum: 'atlandi', neden: String(hata.message).split('\n')[0] }));
     if (sonuc.durum === 'atlandi') gunluk(`Güncelleme denetlenemedi: ${sonuc.neden}.`);
     baglam.veri.guncelleme = sonuc;
     if (sonuc.durum === 'guncellendi') {
