@@ -319,9 +319,9 @@ async function calistir(baglam) {
         if (yol === '/') {
           yanit.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
           yanit.end(fs.readFileSync(path.join(kok, 'arayuz', 'index.html')));
-        } else if (yol === '/robot.ico') {
-          yanit.writeHead(200, { 'content-type': 'image/x-icon', 'cache-control': 'max-age=3600' });
-          yanit.end(fs.readFileSync(path.join(kok, 'arayuz', 'robot.ico')));
+        } else if (yol === '/simge.ico') {
+          yanit.writeHead(200, { 'content-type': 'image/x-icon', 'cache-control': 'no-cache' });
+          yanit.end(fs.readFileSync(path.join(kok, 'arayuz', 'simge.ico')));
         } else if (yol === '/api/durum') json(200, durumOzeti());
         else if (yol.startsWith('/cikti/')) dosyaGonder(yanit, ciktiKlasoru(), yol.slice(7));
         else if (yol.startsWith('/referans/')) dosyaGonder(yanit, refKlasoru, yol.slice(10));

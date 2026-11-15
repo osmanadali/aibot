@@ -333,7 +333,7 @@ async function ana() {
         hazir = await fetch(`${taban}/api/durum`).then((y) => y.ok, () => false);
       }
       kontrol(hazir, 'uygulama açıldı');
-      kontrol((await fetch(`${taban}/robot.ico`)).headers.get('content-type') === 'image/x-icon', 'simge sunuluyor');
+      kontrol((await fetch(`${taban}/simge.ico`)).headers.get('content-type') === 'image/x-icon', 'simge sunuluyor');
       sonuc = await robotCalistir(['arayuz', '--acma', ...uygArg]);
       kontrol(sonuc.status === 0 && /zaten açık/.test(sonuc.stdout), 'ikinci kez başlatınca yeni bir kopya açılmadı');
 

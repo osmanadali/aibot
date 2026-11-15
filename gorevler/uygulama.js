@@ -4,9 +4,34 @@
 //
 // Seçenekler:  --guncellemeden (güncelleme denetimini atla)
 
+const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { guncelle } = require('../lib/guncelle');
+const { veriKlasoru } = require('../lib/gorseller');
+
+// Kısayolun görünümü (simge dosyası vb.) değiştiğinde bu sayı artırılır; robot bir
+// sonraki açılışta masaüstü kısayolunu kendiliğinden yeniler.
+const KISAYOL_SURUMU = '2';
+
+function kisayoluYenile(baglam) {
+  if (process.platform !== 'win32') return;
+  try {
+    const isaret = path.join(veriKlasoru(baglam), 'kisayol-surumu.txt');
+    if (fs.existsSync(isaret) && fs.readFileSync(isaret, 'utf8').trim() === KISAYOL_SURUMU) return;
+    const sonuc = spawnSync(
+      'powershell.exe',
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(baglam.kok, 'kisayol.ps1')],
+      { stdio: 'ignore', timeout: 30000 }
+    );
+    if (sonuc.error || sonuc.status !== 0) return;
+    fs.mkdirSync(path.dirname(isaret), { recursive: true });
+    fs.writeFileSync(isaret, KISAYOL_SURUMU);
+    baglam.gunluk('Masaüstü kısayolu yenilendi.');
+  } catch {
+    /* kısayol yenilenemese de robot açılır */
+  }
+}
 
 async function calistir(baglam) {
   const { secenekler, gunluk } = baglam;
@@ -28,6 +53,7 @@ async function calistir(baglam) {
     }
   }
 
+  kisayoluYenile(baglam);
   await require('./arayuz').calistir({ ...baglam, secenekler: { ...secenekler, uygulama: true } });
 }
 
