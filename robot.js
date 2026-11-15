@@ -10,6 +10,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { ayarlariYukle } = require('./lib/ayarlar');
 
 const KOK = __dirname;
 
@@ -31,14 +32,6 @@ function gunluk(...parcalar) {
   const satir = `[${saat}] ${parcalar.join(' ')}`;
   console.log(satir);
   bildir({ tur: 'gunluk', satir });
-}
-
-function ayarlariOku(yol) {
-  try {
-    return JSON.parse(fs.readFileSync(yol, 'utf8').replace(/^\uFEFF/, ''));
-  } catch (hata) {
-    throw new Error(`${yol} okunamadı: ${hata.message}`);
-  }
 }
 
 function gorevleriYukle() {
@@ -91,7 +84,7 @@ function yardim(gorevler, ayarlar) {
 async function ana() {
   const { adlar, secenekler } = secenekleriAyir(process.argv.slice(2));
   const ayarDosyasi = path.resolve(KOK, secenekler.ayarlar || 'ayarlar.json');
-  const ayarlar = ayarlariOku(ayarDosyasi);
+  const ayarlar = ayarlariYukle(ayarDosyasi);
   const gorevler = gorevleriYukle();
 
   if (!adlar.length) {

@@ -9,13 +9,15 @@
 //   projeKlasoru    Claude Code'un çalışacağı klasör (oyun projen)
 //   hedefAltKlasor  Görsellerin proje içinde kopyalanacağı yer ("" ise kopyalanmaz)
 //   mod             "sohbet": bu pencerede etkileşimli sohbet açar
+//                   "pencere": sohbeti yeni bir komut penceresinde açar (yalnızca Windows)
 //                   "arkaplan": mesajı gönderir, yanıtı yazdırır ve çıkar
 //   devamEt         true ise o klasördeki son sohbete devam eder
 //   mesaj           Görsel listesinin önüne eklenecek talimat
 //
-// Seçenekler:  --proje <klasör>   --mesaj "<metin>"
+// Seçenekler:  --proje <klasör>   --mesaj "<metin>"   --claude-mod <mod>
 
 const path = require('path');
+const fs = require('fs');
 const { spawn } = require('child_process');
 const { gonderilecekGorseller, projeKlasorunuBul, projeyeKopyala } = require('../lib/gorseller');
 
@@ -39,6 +41,23 @@ function claudeCalistir({ komut, bayraklar, mesaj, mod, proje }) {
     surec.on('error', reddet);
     surec.on('close', (kod) => coz({ kod, sureMs: Date.now() - baslangic }));
   });
+}
+
+// Sohbeti yeni bir komut penceresinde açar. Komutlar küçük bir .cmd dosyasına
+// yazılır; böylece mesajdaki Türkçe harfler ve boşluklar bozulmaz.
+function yeniPenceredeAc({ komut, mesaj, proje, devamEt, betikDosyasi }) {
+  const kacis = (metin) => metin.replace(/%/g, '%%');
+  const guvenli = kacis(mesaj.replace(/\s+/g, ' ').replace(/"/g, ''));
+  const yeniSohbet = `${komut} "${guvenli}"`;
+  const satirlar = [
+    '@echo off',
+    'chcp 65001 >nul',
+    `cd /d "${kacis(proje)}"`,
+    devamEt ? `${komut} --continue "${guvenli}" || ${yeniSohbet}` : yeniSohbet,
+  ];
+  fs.mkdirSync(path.dirname(betikDosyasi), { recursive: true });
+  fs.writeFileSync(betikDosyasi, `${satirlar.join('\r\n')}\r\n`);
+  spawn('cmd.exe', ['/c', 'start', 'Claude Code', 'cmd', '/k', betikDosyasi], { detached: true, stdio: 'ignore' }).unref();
 }
 
 async function calistir(baglam) {
@@ -67,8 +86,14 @@ async function calistir(baglam) {
       : `Görseller (${yollar.length} adet) şu klasörde: ${path.dirname(yollar[0])}`;
   const mesaj = `${secenekler.mesaj || ayar.mesaj || 'Robot şu görselleri üretti.'}\n\n${kisaListe}`;
 
-  const mod = ayar.mod === 'arkaplan' ? 'arkaplan' : 'sohbet';
+  const istenenMod = secenekler['claude-mod'] || ayar.mod;
   const komut = ayar.komut || 'claude';
+  if (istenenMod === 'pencere' && process.platform === 'win32') {
+    yeniPenceredeAc({ komut, mesaj, proje, devamEt: Boolean(ayar.devamEt), betikDosyasi: path.join(baglam.kok, 'veri', 'claude-ac.cmd') });
+    gunluk(`Claude Code sohbeti yeni bir pencerede açıldı: ${proje}`);
+    return;
+  }
+  const mod = istenenMod === 'arkaplan' ? 'arkaplan' : 'sohbet';
   const dene = (devam) => claudeCalistir({ komut, bayraklar: devam ? ['--continue'] : [], mesaj, mod, proje });
 
   gunluk(`Claude Code başlatılıyor (${mod}${ayar.devamEt ? ', son sohbete devam' : ''}): ${proje}`);

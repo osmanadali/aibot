@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="zemin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff8a55"/>
+      <stop offset="1" stop-color="#de4a16"/>
+    </linearGradient>
+    <linearGradient id="kafa" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffaf2"/>
+      <stop offset="1" stop-color="#f6e7d4"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="58" fill="url(#zemin)"/>
+  <rect x="8.5" y="8.5" width="239" height="239" rx="57.5" fill="none" stroke="#fff" stroke-opacity=".22"/>
+  <path d="M128 84V60" stroke="#fff6ea" stroke-width="11" stroke-linecap="round"/>
+  <circle cx="128" cy="50" r="13" fill="#fff6ea"/>
+  <rect x="34" y="122" width="26" height="42" rx="11" fill="#f6e7d4"/>
+  <rect x="196" y="122" width="26" height="42" rx="11" fill="#f6e7d4"/>
+  <rect x="52" y="82" width="152" height="122" rx="38" fill="url(#kafa)"/>
+  <g class="gozler" fill="#1d1a16">
+    <circle cx="99" cy="136" r="17"/>
+    <circle cx="157" cy="136" r="17"/>
+  </g>
+  <circle cx="105" cy="130" r="5" fill="#fff"/>
+  <circle cx="163" cy="130" r="5" fill="#fff"/>
+  <rect x="104" y="170" width="48" height="10" rx="5" fill="#e4521b"/>
+</svg>

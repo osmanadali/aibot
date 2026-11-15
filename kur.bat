@@ -12,6 +12,7 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0kisayol.ps1"
 echo.
-echo Kurulum tamam. Once deneme.bat ile dene, sonra arayuz.bat ile arayuzu ac.
+echo Kurulum tamam. Masaustundeki Robot simgesine cift tiklayarak ac.
 pause

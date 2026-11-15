@@ -44,7 +44,13 @@
     "commitMesaji": "Robot: {adet} görsel eklendi"
   },
   "arayuz": {
-    "port": 4317
+    "port": 4317,
+    "pencereArgumanlari": []
+  },
+  "guncelleme": {
+    "kapali": false,
+    "depo": "osmanadali/aibot",
+    "dal": "main"
   },
   "akislar": {
     "oyun-gorselleri": [

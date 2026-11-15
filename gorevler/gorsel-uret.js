@@ -54,6 +54,9 @@ async function calistir(baglam) {
   const { ayarlar, secenekler, gunluk, bildir } = baglam;
   const ayar = ayarlar.chatgpt;
   const istemDosyasi = path.resolve(baglam.kok, secenekler.istemler || ayarlar.gorselUret.istemDosyasi);
+  // istemler.txt sana aittir ve güncellemelerle değişmez; ilk çalıştırmada örnekten oluşturulur.
+  const ornek = path.join(baglam.kok, 'istemler.ornek.txt');
+  if (!fs.existsSync(istemDosyasi) && !secenekler.istemler && fs.existsSync(ornek)) fs.copyFileSync(ornek, istemDosyasi);
   const cikti = path.resolve(baglam.kok, secenekler.cikti || ayarlar.gorselUret.ciktiKlasoru);
   fs.mkdirSync(cikti, { recursive: true });
 

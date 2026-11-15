@@ -4,11 +4,13 @@
 // Sınadıkları: tarayıcıyı açıp bağlanma, istemi yazıp gönderme, görseli bekleyip
 // indirme (aynı ve farklı kaynaktan), yazılı yanıtta hata verme, kaldığı yerden
 // devam etme, görselleri projeye kopyalayıp Claude Code'a iletme, görselleri
-// commit'leyip uzak depoya gönderme, arayüzden referans görselli iş çalıştırma.
+// commit'leyip uzak depoya gönderme, arayüzden referans görselli iş çalıştırma,
+// yeni sürümü indirip kurma, uygulama penceresiyle açılıp kapanma.
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const http = require('http');
 const { spawn, spawnSync } = require('child_process');
 const { chromium } = require('playwright-core');
 const { sahteChatgptBaslat, pngUret } = require('./sahte-chatgpt');
@@ -43,9 +45,9 @@ fs.appendFileSync(${JSON.stringify(kayit)}, JSON.stringify({ argumanlar: process
 }
 
 // Sahte site bu süreçte çalıştığı için robot eşzamansız başlatılır (süreç bloklanmamalı).
-function robotCalistir(argumanlar) {
+function robotCalistir(argumanlar, kok = KOK) {
   return new Promise((coz) => {
-    const surec = spawn(process.execPath, [path.join(KOK, 'robot.js'), ...argumanlar]);
+    const surec = spawn(process.execPath, [path.join(kok, 'robot.js'), ...argumanlar]);
     const sonuc = { stdout: '', stderr: '', status: null };
     surec.stdout.on('data', (veri) => {
       sonuc.stdout += veri;
@@ -198,6 +200,11 @@ async function ana() {
       kontrol((await istek('/api/isler', { istem: 'x' }, { origin: 'http://kotu.example' })).kod === 403, 'başka bir siteden gelen istek reddedildi');
       kontrol((await istek('/api/isler', { istem: '   ' })).kod === 400, 'boş istem reddedildi');
 
+      yanit = await istek('/api/ayarlar', { sonEk: 'suluboya' });
+      const yerelDosya = ayarDosyasi.replace(/\.json$/, '.yerel.json');
+      kontrol(yanit.veri.ayarlar.sonEk === 'suluboya' && JSON.parse(fs.readFileSync(yerelDosya, 'utf8')).chatgpt.sonEk === 'suluboya', 'ayar değişikliği yerel ayar dosyasına yazıldı');
+      kontrol((JSON.parse(fs.readFileSync(ayarDosyasi, 'utf8')).chatgpt.sonEk || '') === (ayarlar.chatgpt.sonEk || ''), 'varsayılan ayar dosyasına dokunulmadı');
+
       yanit = await istek('/api/baslat', { sonra: 'yok' });
       kontrol(yanit.kod === 200 && yanit.veri.calisiyor, 'sıra başlatıldı');
       for (let i = 0; i < 120 && yanit.veri.calisiyor; i++) {
@@ -216,6 +223,90 @@ async function ana() {
       kontrol(yanit.veri.isler.length === 0, 'iş sıradan kaldırıldı');
     } finally {
       arayuz.kill();
+    }
+
+    console.log('6) Güncelleme: yeni sürümü indirip kurma');
+    const disarida = (ad) => ['node_modules', '.git', 'veri', 'cikti', 'tarayici-profili', 'ayarlar.yerel.json', 'istemler.txt'].includes(ad);
+    const kopyala = (kaynak, hedef) => fs.cpSync(kaynak, hedef, { recursive: true, filter: (yol) => !disarida(path.basename(yol)) });
+    const kurulum = path.join(gecici, 'kurulum');
+    kopyala(KOK, kurulum);
+    fs.symlinkSync(path.join(KOK, 'node_modules'), path.join(kurulum, 'node_modules'), 'junction');
+    const eskiSurum = 'a'.repeat(40);
+    const yeniSurum = 'b'.repeat(40);
+    fs.writeFileSync(path.join(kurulum, 'surum.txt'), eskiSurum);
+    fs.writeFileSync(path.join(kurulum, 'istemler.txt'), 'benim istemim');
+    fs.writeFileSync(path.join(kurulum, 'arayuz', 'eski.txt'), 'yeni sürümde yok');
+    fs.mkdirSync(path.join(kurulum, 'veri'));
+    fs.writeFileSync(path.join(kurulum, 'veri', 'kurulu-dosyalar.json'), JSON.stringify(['arayuz/eski.txt', 'README.md']));
+
+    const paketKoku = path.join(gecici, 'paket');
+    const yeniKopya = path.join(paketKoku, `aibot-${yeniSurum}`);
+    fs.mkdirSync(paketKoku);
+    kopyala(kurulum, yeniKopya);
+    fs.rmSync(path.join(yeniKopya, 'arayuz', 'eski.txt'));
+    fs.writeFileSync(path.join(yeniKopya, 'README.md'), 'YENİ SÜRÜM');
+    fs.writeFileSync(path.join(yeniKopya, 'yeni-dosya.txt'), 'yeni');
+    fs.writeFileSync(path.join(yeniKopya, 'istemler.txt'), 'paketten gelen');
+    const tar = spawnSync('tar', ['-czf', 'paket.tar.gz', '-C', 'paket', `aibot-${yeniSurum}`], { cwd: gecici, encoding: 'utf8' });
+    if (tar.status !== 0) throw new Error(`tar çalışmadı: ${tar.stderr || tar.error}`);
+
+    const depo = http.createServer((istek, yanit) => {
+      if (istek.url === '/surum') yanit.end(yeniSurum);
+      else if (istek.url === `/paket/${yeniSurum}`) yanit.end(fs.readFileSync(path.join(gecici, 'paket.tar.gz')));
+      else yanit.writeHead(404).end();
+    });
+    await new Promise((coz) => depo.listen(0, '127.0.0.1', coz));
+    const depoAdresi = `http://127.0.0.1:${depo.address().port}`;
+    fs.writeFileSync(
+      path.join(kurulum, 'ayarlar.yerel.json'),
+      JSON.stringify({ chatgpt: { sonEk: 'benim stilim' }, guncelleme: { surumAdresi: `${depoAdresi}/surum`, paketAdresi: `${depoAdresi}/paket/{surum}` } })
+    );
+    try {
+      sonuc = await robotCalistir(['guncelle'], kurulum);
+      const oku = (ad) => fs.readFileSync(path.join(kurulum, ad), 'utf8');
+      kontrol(sonuc.status === 0 && /Güncellendi/.test(sonuc.stdout), 'yeni sürüm bulundu ve kuruldu');
+      kontrol(oku('README.md') === 'YENİ SÜRÜM' && oku('yeni-dosya.txt') === 'yeni', 'değişen ve yeni dosyalar yerine kondu');
+      kontrol(!fs.existsSync(path.join(kurulum, 'arayuz', 'eski.txt')), 'depodan silinen dosya kaldırıldı');
+      kontrol(oku('istemler.txt') === 'benim istemim' && JSON.parse(oku('ayarlar.yerel.json')).chatgpt.sonEk === 'benim stilim', 'kullanıcının istemleri ve ayarları korundu');
+      kontrol(oku('surum.txt').trim() === yeniSurum, 'kurulu sürüm kaydedildi');
+      sonuc = await robotCalistir(['guncelle'], kurulum);
+      kontrol(sonuc.status === 0 && /Robot güncel/.test(sonuc.stdout), 'tekrar denetlenince güncel olduğu görüldü');
+      depo.close();
+      sonuc = await robotCalistir(['guncelle'], kurulum);
+      kontrol(sonuc.status === 0 && /Güncelleme yapılmadı/.test(sonuc.stdout), 'depoya ulaşılamayınca hata vermeden eski sürümle devam etti');
+    } finally {
+      depo.close();
+    }
+
+    console.log('7) Uygulama: kendi penceresinde açılma, pencere kapanınca kapanma');
+    const UYGULAMA_PORTU = 4398;
+    const PENCERE_PORTU = 9342;
+    ayarlar.arayuz = { port: UYGULAMA_PORTU, pencereArgumanlari: [...(process.env.ROBOT_GORUNUR ? [] : ['--headless=new', ...(linux ? ['--no-sandbox'] : [])]), `--remote-debugging-port=${PENCERE_PORTU}`] };
+    ayarYaz();
+    const uygArg = ['--guncellemeden', '--ayarlar', ayarDosyasi, '--veri', path.join(gecici, 'veri-uygulama')];
+    const uygulama = spawn(process.execPath, [path.join(KOK, 'robot.js'), 'uygulama', ...uygArg], { stdio: 'ignore' });
+    const kapandi = new Promise((coz) => uygulama.on('exit', coz));
+    try {
+      const taban = `http://127.0.0.1:${UYGULAMA_PORTU}`;
+      let hazir = false;
+      for (let i = 0; i < 40 && !hazir; i++) {
+        await new Promise((coz) => setTimeout(coz, 250));
+        hazir = await fetch(`${taban}/api/durum`).then((y) => y.ok, () => false);
+      }
+      kontrol(hazir, 'uygulama açıldı');
+      kontrol((await fetch(`${taban}/robot.ico`)).headers.get('content-type') === 'image/x-icon', 'simge sunuluyor');
+      sonuc = await robotCalistir(['arayuz', '--acma', ...uygArg]);
+      kontrol(sonuc.status === 0 && /zaten açık/.test(sonuc.stdout), 'ikinci kez başlatınca yeni bir kopya açılmadı');
+
+      await new Promise((coz) => setTimeout(coz, 5500));
+      const pencere = await chromium.connectOverCDP(`http://127.0.0.1:${PENCERE_PORTU}`);
+      const sayfalar = pencere.contexts().flatMap((icerik) => icerik.pages());
+      kontrol(sayfalar.some((sayfa) => sayfa.url().startsWith(taban)), 'arayüz uygulama penceresinde açıldı');
+      await (await pencere.newBrowserCDPSession()).send('Browser.close').catch(() => {});
+      const kod = await Promise.race([kapandi, new Promise((coz) => setTimeout(() => coz('zaman aşımı'), 15000))]);
+      kontrol(kod === 0, 'pencere kapanınca robot da kapandı');
+    } finally {
+      uygulama.kill();
     }
 
     console.log('\nTüm denemeler geçti.');

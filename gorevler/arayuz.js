@@ -6,12 +6,16 @@
 // olarak çalıştırır (gorsel-uret ve istenirse claude-gonder / git-gonder).
 //
 // Seçenekler:  --port <numara>   --acma (tarayıcıyı kendiliğinden açma)
+//              --uygulama (arayüzü kendi penceresinde aç; pencere kapanınca robot da kapanır)
 
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
 const { fork, spawn } = require('child_process');
 const { dosyaAdinaCevir } = require('../lib/gorseller');
+const { jsonOku, ayarlariYukle, yerelAyarYaz } = require('../lib/ayarlar');
+const { kuruluSurum } = require('../lib/guncelle');
+const { tarayiciYolunuBul } = require('../lib/tarayici');
 
 const GORSEL_TURLERI = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
 const SONRAKI_ADIM = { yok: [], claude: ['claude-gonder'], github: ['git-gonder'] };
@@ -23,11 +27,6 @@ function gorselTuru(bayt) {
   if (bayt.length >= 12 && bayt.toString('latin1', 0, 4) === 'RIFF' && bayt.toString('latin1', 8, 12) === 'WEBP') return 'webp';
   if (bayt.length >= 4 && bayt.toString('latin1', 0, 4) === 'GIF8') return 'gif';
   return null;
-}
-
-function jsonOku(dosya, yoksa) {
-  if (!fs.existsSync(dosya)) return yoksa;
-  return JSON.parse(fs.readFileSync(dosya, 'utf8').replace(/^\uFEFF/, ''));
 }
 
 function tarayicidaAc(adres) {
@@ -60,7 +59,7 @@ async function calistir(baglam) {
   const calisanDosya = path.join(veriKlasoru, 'calisan-isler.json');
   fs.mkdirSync(refKlasoru, { recursive: true });
 
-  const ayarOku = () => jsonOku(ayarDosyasi, {});
+  const ayarOku = () => ayarlariYukle(ayarDosyasi);
   const ciktiKlasoru = () => path.resolve(kok, ayarOku().gorselUret.ciktiKlasoru);
   const durumDosyasi = () => path.join(ciktiKlasoru(), 'durum.json');
   const isleriOku = () => jsonOku(islerDosyasi, []);
@@ -103,6 +102,7 @@ async function calistir(baglam) {
       sonra,
       gunluk: gunlukSatirlari,
       isler,
+      surum: { kisa: kuruluSurum(kok).slice(0, 7), guncellendi: Boolean(secenekler.guncellendi) },
       ayarlar: {
         sonEk: (ayarlar.chatgpt || {}).sonEk || '',
         projeKlasoru: (ayarlar.claude || {}).projeKlasoru || '',
@@ -173,14 +173,15 @@ async function calistir(baglam) {
 
     '/api/ayarlar': (govde) => {
       calismiyorOlmali();
-      const ayarlar = ayarOku();
-      if (typeof govde.sonEk === 'string') ayarlar.chatgpt.sonEk = govde.sonEk.trim();
+      // Yalnızca yerel ayar dosyasına yazılır; güncellemeler bu dosyaya dokunmaz.
+      const degisiklik = {};
+      if (typeof govde.sonEk === 'string') degisiklik.chatgpt = { sonEk: govde.sonEk.trim() };
       if (typeof govde.projeKlasoru === 'string') {
         const klasor = govde.projeKlasoru.trim().replace(/^"|"$/g, '');
         if (klasor && !fs.existsSync(path.resolve(kok, klasor))) throw new IstekHatasi(400, `Klasör bulunamadı: ${klasor}`);
-        ayarlar.claude = { ...ayarlar.claude, projeKlasoru: klasor };
+        degisiklik.claude = { projeKlasoru: klasor };
       }
-      fs.writeFileSync(ayarDosyasi, `${JSON.stringify(ayarlar, null, 2)}\n`);
+      yerelAyarYaz(ayarDosyasi, degisiklik);
     },
 
     '/api/baslat': (govde) => {
@@ -201,11 +202,11 @@ async function calistir(baglam) {
         JSON.stringify(bekleyenler.map((is) => ({ ad: is.ad, istem: is.istem, referanslar: is.referanslar.map((d) => path.join(refKlasoru, d)) })))
       );
       gunlugeYaz(`—— ${bekleyenler.length} iş başlatıldı ——`);
-      const cocuk = fork(
-        path.join(kok, 'robot.js'),
-        ['gorsel-uret', ...SONRAKI_ADIM[sonra], '--ayarlar', ayarDosyasi, '--istemler', calisanDosya],
-        { cwd: kok }
-      );
+      const argumanlar = ['gorsel-uret', ...SONRAKI_ADIM[sonra], '--ayarlar', ayarDosyasi, '--istemler', calisanDosya];
+      // Robot görünür bir komut penceresi olmadan çalışıyorsa (masaüstü kısayolu)
+      // Claude Code sohbeti kendi penceresinde açılır.
+      if (process.platform === 'win32' && !process.stdout.isTTY) argumanlar.push('--claude-mod', 'pencere');
+      const cocuk = fork(path.join(kok, 'robot.js'), argumanlar, { cwd: kok });
       surec = cocuk;
       cocuk.on('message', (olay) => {
         if (olay.tur === 'gunluk') gunlugeYaz(olay.satir);
@@ -274,6 +275,9 @@ async function calistir(baglam) {
         if (yol === '/') {
           yanit.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
           yanit.end(fs.readFileSync(path.join(kok, 'arayuz', 'index.html')));
+        } else if (yol === '/robot.ico') {
+          yanit.writeHead(200, { 'content-type': 'image/x-icon', 'cache-control': 'max-age=3600' });
+          yanit.end(fs.readFileSync(path.join(kok, 'arayuz', 'robot.ico')));
         } else if (yol === '/api/durum') json(200, durumOzeti());
         else if (yol.startsWith('/cikti/')) dosyaGonder(yanit, ciktiKlasoru(), yol.slice(7));
         else if (yol.startsWith('/referans/')) dosyaGonder(yanit, refKlasoru, yol.slice(10));
@@ -298,21 +302,65 @@ async function calistir(baglam) {
   });
 
   const adres = `http://127.0.0.1:${port}/`;
-  await new Promise((coz, reddet) => {
-    sunucu.once('error', (hata) =>
-      reddet(hata.code === 'EADDRINUSE' ? new Error(`${port} portu kullanımda. Arayüz zaten açık olabilir: ${adres}`) : hata)
-    );
-    sunucu.listen(port, '127.0.0.1', coz);
-  });
-
-  gunluk(`Arayüz hazır: ${adres}`);
-  gunluk('Kapatmak için bu pencereyi kapat ya da Ctrl+C\'ye bas.');
-  if (!secenekler.acma) tarayicidaAc(adres);
 
   const kapat = () => {
     if (surec) surec.kill();
     process.exit(0);
   };
+
+  // Arayüzü adres çubuğu olmayan, kendine ait bir pencerede açar.
+  // "sahip" true ise pencere kapanınca robot da kapanır.
+  function pencereAc(sahip) {
+    let yol;
+    try {
+      yol = tarayiciYolunuBul((ayarOku().tarayici || {}).yol);
+    } catch {
+      tarayicidaAc(adres);
+      return;
+    }
+    const argumanlar = [
+      `--app=${adres}`,
+      `--user-data-dir=${path.join(veriKlasoru, 'arayuz-profili')}`,
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--window-size=1320,900',
+      ...((ayarOku().arayuz || {}).pencereArgumanlari || []),
+    ];
+    const baslangic = Date.now();
+    const pencere = spawn(yol, argumanlar, { detached: !sahip, stdio: 'ignore' });
+    pencere.on('error', () => tarayicidaAc(adres));
+    if (!sahip) {
+      pencere.unref();
+      return;
+    }
+    pencere.on('exit', () => {
+      // Hemen kapandıysa pencereyi zaten açık olan başka bir tarayıcı süreci devralmıştır.
+      if (Date.now() - baslangic > 5000) kapat();
+      else gunluk(`Pencere başka bir süreçte açıldı; arayüz açık kalıyor: ${adres}`);
+    });
+  }
+
+  const dinlendi = await new Promise((coz, reddet) => {
+    sunucu.once('error', (hata) => (hata.code === 'EADDRINUSE' ? coz(false) : reddet(hata)));
+    sunucu.listen(port, '127.0.0.1', () => coz(true));
+  });
+  if (!dinlendi) {
+    // Robot zaten açıksa ikinci kez başlatmak yerine var olan arayüzü öne getir.
+    const bizimMi = await fetch(`${adres}api/durum`, { signal: AbortSignal.timeout(3000) }).then((y) => y.ok, () => false);
+    if (!bizimMi) throw new Error(`${port} portu başka bir program tarafından kullanılıyor. ayarlar.yerel.json içinde arayuz.port değerini değiştir.`);
+    gunluk(`Robot zaten açık: ${adres}`);
+    if (secenekler.uygulama) pencereAc(false);
+    else if (!secenekler.acma) tarayicidaAc(adres);
+    return;
+  }
+
+  gunluk(`Arayüz hazır: ${adres}`);
+  if (secenekler.uygulama) pencereAc(true);
+  else {
+    gunluk('Kapatmak için bu pencereyi kapat ya da Ctrl+C\'ye bas.');
+    if (!secenekler.acma) tarayicidaAc(adres);
+  }
+
   process.on('SIGINT', kapat);
   process.on('SIGTERM', kapat);
   await new Promise(() => {}); // pencere kapatılana kadar açık kal

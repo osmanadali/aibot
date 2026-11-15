@@ -15,20 +15,20 @@ sohbetine iletir; `oyun-gorselleri-github` görselleri üretip GitHub'a gönderi
 
 ## Kurulum (bir kez)
 
-1. [Node.js](https://nodejs.org) LTS sürümünü kur.
-2. `kur.bat` dosyasına çift tıkla.
-3. `deneme.bat` dosyasına çift tıkla. Bu, robotu sahte bir ChatGPT sayfasıyla dener;
-   gerçek hesabına dokunmaz. Sonunda "Tüm denemeler geçti" yazmalı.
-4. `ayarlar.json` içinde `claude.projeKlasoru` alanına oyun projenin klasörünü yaz.
-   Ters eğik çizgiler çift yazılır: `"C:\\Oyunlar\\benim-oyunum"`.
+1. [Node.js](https://nodejs.org) LTS sürümünü kur (sayfadaki "Windows Installer (.msi)").
+2. Robotun klasöründeki `kur.bat` dosyasına çift tıkla. Gerekli parçayı indirir ve
+   masaüstüne **Robot** simgesini ekler.
+3. İstersen `deneme.bat` ile dene. Robotu sahte bir ChatGPT sayfasıyla sınar,
+   gerçek hesabına dokunmaz; sonunda "Tüm denemeler geçti" yazmalı.
 
-`git-gonder` için Git, `claude-gonder` için bilgisayarında Claude Code komut satırı (`claude` komutu) kurulu
-ve giriş yapılmış olmalı.
+`git-gonder` için Git, `claude-gonder` için Claude Code komut satırı (`claude` komutu)
+kurulu ve giriş yapılmış olmalı.
 
-## Arayüzle kullanım
+## Kullanım
 
-`arayuz.bat` dosyasına çift tıkla. Tarayıcında `http://127.0.0.1:4317` adresinde
-robotun arayüzü açılır; siyah pencere açık kaldıkça çalışır.
+Masaüstündeki **Robot** simgesine çift tıkla. Robot kendi penceresinde açılır;
+pencereyi kapatınca robot da kapanır. Simge kaybolursa `kisayol-olustur.bat`
+yeniden ekler.
 
 - **İstem:** Kutuya yaz ya da mikrofon düğmesine basıp söyle (Chrome ve Edge'de
   çalışır; ses, tarayıcının kendi ses tanıma hizmetiyle yazıya çevrilir).
@@ -38,15 +38,33 @@ robotun arayüzü açılır; siyah pencere açık kaldıkça çalışır.
   kartta durumu ve bitince görseli görürsün. İlk seferde açılan robot
   tarayıcısında ChatGPT'ye giriş yapman gerekir.
 - **Bitince:** Görselleri Claude Code sohbetine ya da GitHub'a göndermeyi
-  seçebilirsin. Claude Code sohbeti robotun siyah penceresinde açılır.
+  seçebilirsin. Claude Code sohbeti ayrı bir komut penceresinde açılır.
 - Beğenmediğin görselde ↻ düğmesi görseli silip işi yeniden sıraya alır.
 - **Ayarlar** bölümünden ortak stili ve oyun projesi klasörünü değiştirebilirsin.
+- Robot açılmazsa küçük bir uyarı çıkar; ayrıntı `veri\uygulama.log` dosyasındadır.
 
 Arayüzün işleri `veri/` klasöründe, görseller `cikti/` klasöründe durur.
 
+Arayüzü normal tarayıcında, komut penceresi görünür şekilde açmak istersen
+`arayuz.bat` dosyasını kullan (`http://127.0.0.1:4317`).
+
+## Güncellemeler
+
+Robot her açılışta GitHub'daki depoya bakar; yeni sürüm varsa indirir, kurar ve
+yeni sürümle açılır. Senin yapman gereken bir şey yok. İnternet yoksa eski
+sürümle açılır. Kurulu sürüm arayüzün en altında yazar.
+
+Güncelleme şunlara dokunmaz: `ayarlar.yerel.json` (ayarların), `istemler.txt`,
+`veri/`, `cikti/`, `tarayici-profili/` (ChatGPT girişin).
+
+Elle denetlemek için `node robot.js guncelle`; kapatmak için `ayarlar.yerel.json`
+içine `{ "guncelleme": { "kapali": true } }` yaz.
+
 ## Dosyayla kullanım
 
-1. `istemler.txt` dosyasına istemlerini yaz (her satır bir görsel).
+1. `istemler.ornek.txt` dosyasını kopyalayıp adını `istemler.txt` yap ve istemlerini
+   yaz (her satır bir görsel). `ayarlar.yerel.json` içinde proje klasörünü belirt
+   (aşağıda "Ayarlar").
 2. `calistir.bat` dosyasına çift tıkla.
 3. İlk seferde açılan tarayıcı penceresinde ChatGPT'ye giriş yap. Robot girişi
    bekler, sonra kendiliğinden devam eder. Giriş `tarayici-profili/` klasöründe
@@ -110,7 +128,19 @@ görsel limiti dolmuştur) robot durur; daha sonra tekrar çalıştırman yeterl
 Bir görseli baştan ürettirmek için dosyasını sil ya da `--yeniden` ekle.
 Başarısız her istem için `cikti/hata-<ad>.png` ekran görüntüsü kaydedilir.
 
-## Ayarlar (`ayarlar.json`)
+## Ayarlar
+
+`ayarlar.json` varsayılanları içerir ve güncellemelerle yenilenir; **onu
+değiştirme.** Kendi değerlerini aynı biçimde `ayarlar.yerel.json` dosyasına yaz;
+oradaki değerler varsayılanların üzerine yazılır. Arayüzdeki Ayarlar bölümü de bu
+dosyaya kaydeder. Örnek:
+
+```json
+{
+  "claude": { "projeKlasoru": "C:\\Oyunlar\\benim-oyunum" },
+  "chatgpt": { "sonEk": "pixel-art, şeffaf arka plan" }
+}
+```
 
 | Alan | Anlamı |
 | --- | --- |
@@ -131,6 +161,7 @@ Başarısız her istem için `cikti/hata-<ad>.png` ekran görüntüsü kaydedili
 | `git.uzak` | Gönderilecek uzak depo adı (varsayılan `origin`). |
 | `git.commitMesaji` | Commit mesajı; `{adet}` yerine görsel sayısı yazılır. |
 | `arayuz.port` | Arayüzün açıldığı port (varsayılan 4317). |
+| `guncelleme.kapali` | `true` ise açılışta güncelleme denetlenmez. |
 | `akislar` | Art arda çalışacak görev listeleri. |
 
 ### ChatGPT arayüzü değişirse
@@ -170,6 +201,8 @@ içindeki `tarayiciyaBaglan` ile aynı (giriş yapılmış) tarayıcıyı kullan
 - Robot ChatGPT planındaki görsel limitini aşamaz; limit dolunca durur.
 - OpenAI'nin kullanım şartları çıktının otomatik yollarla alınmasını kısıtlar.
   Robot bu yüzden yavaş ve tek tek çalışır; kullanım kararı ve sorumluluğu sende.
+- Güncellemeler `osmanadali/aibot` deposunun `main` dalından gelir; o dala
+  gönderilen her şey bir sonraki açılışta bilgisayarına kurulur.
 - Arayüz yalnızca bu bilgisayardan açılabilir; başka cihazlar ve başka siteler
   ona erişemez.
 - Robot çalışırken tarayıcı, yalnızca bu bilgisayardan erişilebilen bir denetim
