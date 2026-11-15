@@ -32,6 +32,10 @@ yeniden ekler.
 
 - **İstem:** Kutuya yaz ya da mikrofon düğmesine basıp söyle (Chrome ve Edge'de
   çalışır; ses, tarayıcının kendi ses tanıma hizmetiyle yazıya çevrilir).
+- **Hazır liste:** İçinde dosya adları geçen bir görsel listesi yapıştırırsan
+  (ör. `menu_bg.png — Ana menü arka planı`) robot onu dosya dosya ayırır; her
+  görsel kendi dosya adıyla ayrı bir iş olur. Bölüm başlıkları ve listenin
+  başındaki genel bilgiler her isteme eklenir.
 - **Referans görsel:** Görsel düğmesiyle seç, kutuya sürükleyip bırak ya da
   Ctrl+V ile yapıştır. Referanslar istemle birlikte ChatGPT'ye yüklenir.
 - **Sıraya ekle**, sonra **Başlat.** Robot bekleyen işleri sırayla üretir; her
@@ -160,6 +164,7 @@ dosyaya kaydeder. Örnek:
 | `tarayici.yol` | Boşsa Chrome, yoksa Edge kullanılır. Başka tarayıcı için tam yol. |
 | `chatgpt.adres` | Her istem için açılan sayfa. Bir ChatGPT projesinin ya da özel GPT'nin adresini yazabilirsin. |
 | `chatgpt.onEk` / `sonEk` | Her istemin başına / sonuna eklenen metin (ortak stil cümlesi için `sonEk`). |
+| `chatgpt.sorarsaYanit` | ChatGPT görsel üretmek yerine soru sorarsa robotun vereceği yanıt. Boş bırakılırsa yanıt vermez. |
 | `chatgpt.gorselBeklemeDakika` | Bir görsel için en fazla bekleme süresi. |
 | `chatgpt.istemArasiSaniye` | İki istem arasındaki bekleme. |
 | `chatgpt.denemeSayisi` / `denemeArasiDakika` | Olmayan istem kaç kez, ne kadar arayla denenir. |

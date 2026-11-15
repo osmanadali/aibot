@@ -12,7 +12,8 @@ const fs = require('fs');
 const http = require('http');
 const path = require('path');
 const { fork, spawn } = require('child_process');
-const { dosyaAdinaCevir } = require('../lib/gorseller');
+const { guvenliAd } = require('../lib/gorseller');
+const { listeyiAyir } = require('../lib/liste');
 const { jsonOku, ayarlariYukle, yerelAyarYaz } = require('../lib/ayarlar');
 const { kuruluSurum, sonSurum } = require('../lib/guncelle');
 const { tarayiciYolunuBul } = require('../lib/tarayici');
@@ -126,7 +127,7 @@ async function calistir(baglam) {
     const cikti = ciktiKlasoru();
     const durum = jsonOku(durumDosyasi(), {});
     const dolu = (ad) =>
-      isler.some((is) => is.ad === ad) ||
+      isler.some((is) => is.ad.toLowerCase() === ad.toLowerCase()) ||
       Object.keys(durum).some((k) => k.startsWith(`${ad}|`)) ||
       Object.keys(GORSEL_TURLERI).some((uzanti) => fs.existsSync(path.join(cikti, `${ad}.${uzanti}`)));
     let ad = istenen;
@@ -138,25 +139,47 @@ async function calistir(baglam) {
     if (surec) throw new IstekHatasi(409, 'Robot çalışırken bu değiştirilemez. Önce durdur ya da bitmesini bekle.');
   }
 
+  // Gelen referans görselleri çözer ve türlerini doğrular.
+  function referanslariCoz(gelenler) {
+    const liste = Array.isArray(gelenler) ? gelenler : [];
+    if (liste.length > 8) throw new IstekHatasi(400, 'En fazla 8 referans görsel eklenebilir.');
+    return liste.map((ref) => {
+      const bayt = Buffer.from(String(ref.veri || ''), 'base64');
+      const tur = gorselTuru(bayt);
+      if (!tur) throw new IstekHatasi(400, `"${ref.ad || 'dosya'}" desteklenen bir görsel değil (PNG, JPG, WEBP, GIF).`);
+      return { bayt, tur };
+    });
+  }
+
+  function isEkle(isler, ad, istem, refler) {
+    const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    const referanslar = refler.map(({ bayt, tur }, n) => {
+      const dosya = `${id}-${n + 1}.${tur}`;
+      fs.writeFileSync(path.join(refKlasoru, dosya), bayt);
+      return dosya;
+    });
+    isler.push({ id, ad: benzersizAd(guvenliAd(ad || istem), isler), istem, referanslar });
+  }
+
   const islemler = {
     '/api/isler': (govde) => {
       const istem = String(govde.istem || '').replace(/\s+/g, ' ').trim();
       if (!istem) throw new IstekHatasi(400, 'İstem boş olamaz.');
-      const gelenler = Array.isArray(govde.referanslar) ? govde.referanslar : [];
-      if (gelenler.length > 8) throw new IstekHatasi(400, 'En fazla 8 referans görsel eklenebilir.');
-
       const isler = isleriOku();
-      const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-      const referanslar = gelenler.map((ref, n) => {
-        const bayt = Buffer.from(String(ref.veri || ''), 'base64');
-        const tur = gorselTuru(bayt);
-        if (!tur) throw new IstekHatasi(400, `"${ref.ad || 'dosya'}" desteklenen bir görsel değil (PNG, JPG, WEBP, GIF).`);
-        const dosya = `${id}-${n + 1}.${tur}`;
-        fs.writeFileSync(path.join(refKlasoru, dosya), bayt);
-        return dosya;
-      });
-      isler.push({ id, ad: benzersizAd(dosyaAdinaCevir(govde.ad || istem), isler), istem, referanslar });
+      isEkle(isler, govde.ad, istem, referanslariCoz(govde.referanslar));
       isleriYaz(isler);
+    },
+
+    // Yapıştırılan bir görsel listesini dosya dosya ayırıp her birini ayrı iş olarak ekler.
+    '/api/isler/toplu': (govde) => {
+      const parcalar = listeyiAyir(govde.metin || '');
+      if (!parcalar.length) throw new IstekHatasi(400, 'Metinde görsel dosyası adı (ör. menu_bg.png) bulunamadı.');
+      if (parcalar.length > 300) throw new IstekHatasi(400, 'Bir seferde en fazla 300 görsel eklenebilir.');
+      const refler = referanslariCoz(govde.referanslar);
+      const isler = isleriOku();
+      for (const { ad, istem } of parcalar) isEkle(isler, ad, istem.replace(/\s+/g, ' ').trim(), refler);
+      isleriYaz(isler);
+      return { eklenen: parcalar.length };
     },
 
     '/api/isler/sil': (govde) => {

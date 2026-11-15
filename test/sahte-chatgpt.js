@@ -133,6 +133,7 @@ const YENI_SAYFA = (gorselKoku) => `<!doctype html>
   const kes = document.getElementById('kes');
   const fotograflar = document.getElementById('octane-mobile-composer-photos-input');
   let yukleniyor = false;
+  let reddedildi = false;
   let sayac = 0;
   const dugmeleriAyarla = () => {
     const yazili = kutu.value.trim().length > 0;
@@ -159,17 +160,29 @@ const YENI_SAYFA = (gorselKoku) => `<!doctype html>
       for (const ek of ekler) { const resim = document.createElement('img'); resim.src = URL.createObjectURL(ek); ekKutusu.append(resim); }
       mesajlar.append(ekKutusu);
     }
-    kes.style.display = '';
+    // Adreste "durdurmasiz" varsa üretim sırasında "durdur" düğmesi hiç görünmez.
+    const durdurVar = !location.search.includes('durdurmasiz');
+    if (durdurVar) kes.style.display = '';
     setTimeout(() => {
       const asistan = document.createElement('div');
-      if (istem.includes('YAZI')) asistan.textContent = 'Bu görseli üretemiyorum.';
+      // Reddedilen bir istemden sonra aynı sohbette ısrar edilse de görsel üretilmez.
+      if (istem.includes('YAZI')) reddedildi = true;
+      if (reddedildi) asistan.textContent = 'Bu görseli üretemiyorum.';
+      else if (istem.includes('SORU')) asistan.textContent = 'İstersen hemen Paket 1 ile başlayayım.';
       else {
         const resim = document.createElement('img');
         resim.src = ${JSON.stringify(gorselKoku)} + '/gorsel/yeni-' + (++sayac) + '-' + Date.now() + '.png' + (ekler.length ? '?ek=' + ekler.length : '');
         asistan.append(resim);
       }
       mesajlar.append(asistan);
-      setTimeout(() => { kes.style.display = 'none'; }, 700);
+      setTimeout(() => {
+        kes.style.display = 'none';
+        // Yanıt tamamlanınca altında eylem düğmeleri belirir.
+        const kopyala = document.createElement('button');
+        kopyala.setAttribute('aria-label', 'Kopyala');
+        kopyala.textContent = 'k';
+        mesajlar.append(kopyala);
+      }, 700);
     }, 2200);
   };
 </script>`;

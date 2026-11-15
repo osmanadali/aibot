@@ -148,8 +148,34 @@ async function ana() {
     kontrol(fs.existsSync(path.join(yeniCikti, 'duz.png')) && fs.readFileSync(path.join(yeniCikti, 'duz.png')).equals(site.gorsel), 'işaretsiz arayüzde istem gönderildi ve görsel kaydedildi');
     kontrol(fs.readFileSync(path.join(yeniCikti, 'referansli.png')).equals(site.ekliGorsel) && !fs.existsSync(path.join(yeniCikti, 'referansli-2.png')), 'referans doğru alana yüklendi ve çıktı sayılmadı');
     kontrol(!fs.existsSync(path.join(yeniCikti, 'yazili.png')) && /Bu görseli üretemiyorum/.test(sonuc.stdout), 'yazılı yanıt hata olarak bildirildi');
+    // Yazılı yanıttan sonra robot bir kez "başla" der; yine görsel gelmezse vazgeçer.
+    kontrol((sonuc.stdout.match(/yanıtı gönderiliyor/g) || []).length === 1, 'robot yalnızca bir kez ısrar etti');
+    // ChatGPT görsel yerine soru sorarsa robot "başla" yanıtını kendisi vermeli.
+    // Bu sayfada "durdur" düğmesi yok; yanıtın bittiği "Kopyala" düğmesinden anlaşılır.
+    fs.writeFileSync(yeniIstemler, JSON.stringify([{ ad: 'menu_bg', istem: 'SORU sorarak karşılık ver' }]));
+    ayarlar.chatgpt.adres = `${site.adres}yeni?durdurmasiz=1`;
+    ayarYaz();
+    sonuc = await robotCalistir(['gorsel-uret', '--ayarlar', ayarDosyasi, '--istemler', yeniIstemler, '--cikti', yeniCikti]);
+    kontrol(/yanıtı gönderiliyor/.test(sonuc.stdout) && fs.existsSync(path.join(yeniCikti, 'menu_bg.png')), 'ChatGPT soru sorunca robot yanıt verdi, görsel dosya adı korunarak kaydedildi');
     ayarlar.chatgpt.adres = site.adres;
     ayarYaz();
+
+    console.log('1c) Görsel listesini işlere bölme');
+    const { listeyiAyir } = require('../lib/liste');
+    const bolunenler = listeyiAyir([
+      'Oyun: evcil hayvan bakım oyunu.',
+      '',
+      '1. Ana menü ve yükleme ekranları',
+      'menu_bg.png — Ana menü arka planı',
+      '  Boyut: 1920x1080',
+      'logo.png',
+      '## Paket 2',
+      '- ilan_1.png, ilan_2.png: Sahiplendirme ilanı kartları',
+      '| gazino_bg.png | 1080x1920 | Gazino arka planı |',
+    ].join('\n'));
+    kontrol(bolunenler.map((b) => b.ad).join(' ') === 'menu_bg logo ilan_1 ilan_2 gazino_bg', 'her dosya ayrı bir işe dönüştü, adlar korundu');
+    kontrol(bolunenler[0].istem === 'Ana menü arka planı. Boyut: 1920x1080. Bölüm: Ana menü ve yükleme ekranları. Genel bilgi: Oyun: evcil hayvan bakım oyunu.', 'açıklama, devam satırı, bölüm ve genel bilgi isteme eklendi');
+    kontrol(bolunenler[2].istem.startsWith('Sahiplendirme ilanı kartları. Bölüm: Paket 2') && bolunenler[4].istem.startsWith('1080x1920, Gazino arka planı'), 'aynı satırdaki dosyalar ve tablo satırı doğru ayrıldı');
 
     console.log('2) Tekrar çalıştırma: bitenler atlanır, yalnızca eksik olan denenir');
     sonuc = await robotCalistir(['gorsel-uret', '--ayarlar', ayarDosyasi]);
@@ -272,6 +298,10 @@ async function ana() {
       const sonucBayt = Buffer.from(await fetch(taban + is.dosyalar[0].adres).then((y) => y.arrayBuffer()));
       kontrol(sonucBayt.equals(site.ekliGorsel), 'referans ChatGPT\'ye eklendi ve dönen görsel arayüzden açılabiliyor');
       kontrol(yanit.veri.gunluk.some((satir) => satir.includes('kaydedildi')), 'günlük arayüze aktarıldı');
+
+      yanit = await istek('/api/isler/toplu', { metin: '1. Menü\nmenu_bg.png — Arka plan\nlogo.png — Logo' });
+      kontrol(yanit.kod === 200 && yanit.veri.eklenen === 2 && yanit.veri.isler.slice(-2).map((i) => i.ad).join(' ') === 'menu_bg logo', 'yapıştırılan liste arayüzden iki ayrı iş olarak eklendi');
+      for (const eklenen of yanit.veri.isler.slice(-2)) await istek('/api/isler/sil', { id: eklenen.id });
 
       yanit = await istek('/api/isler/yeniden', { id: is.id });
       kontrol(yanit.veri.isler[0].durum === 'bekliyor' && !fs.existsSync(path.join(cikti, is.dosyalar[0].ad)), '"yeniden üret" görseli silip işi sıraya geri aldı');

@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const { tarayiciyaBaglan, bekle } = require('../lib/tarayici');
 const { gorselUret } = require('../lib/chatgpt');
-const { dosyaAdinaCevir } = require('../lib/gorseller');
+const { dosyaAdinaCevir, guvenliAd } = require('../lib/gorseller');
 
 function istemleriOku(dosya) {
   if (!fs.existsSync(dosya)) throw new Error(`İstem dosyası bulunamadı: ${dosya}`);
@@ -26,7 +26,7 @@ function istemleriOku(dosya) {
   if (dosya.toLowerCase().endsWith('.json')) {
     for (const is of JSON.parse(fs.readFileSync(dosya, 'utf8'))) {
       const istem = String(is.istem || '').replace(/\s+/g, ' ').trim();
-      if (istem) ekle(dosyaAdinaCevir(is.ad || istem), istem, is.referanslar || []);
+      if (istem) ekle(guvenliAd(is.ad || istem), istem, is.referanslar || []);
     }
     return istemler;
   }

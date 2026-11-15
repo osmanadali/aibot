@@ -169,6 +169,14 @@
     border: 1px solid var(--cizgi-koyu); border-bottom-width: 2px; background: var(--panel);
   }
 
+  .toplu {
+    display: grid; gap: 4px; padding: 12px 14px; border-radius: 12px; font-size: 13px; color: var(--soluk);
+    background: color-mix(in srgb, var(--vurgu) 8%, var(--panel)); border: 1px solid color-mix(in srgb, var(--vurgu) 28%, var(--cizgi));
+  }
+  .toplu[hidden] { display: none; }
+  .toplu strong { color: var(--vurgu-koyu); font-size: 14px; }
+  .toplu label { display: inline-flex; align-items: center; gap: 7px; margin-top: 4px; cursor: pointer; }
+  .toplu input { accent-color: var(--vurgu); }
   .refler { display: flex; flex-wrap: wrap; gap: 8px; }
   .refler:empty { display: none; }
   .ref { position: relative; width: 66px; height: 66px; border-radius: 12px; overflow: hidden; border: 1px solid var(--cizgi); box-shadow: var(--golge); }
@@ -180,6 +188,7 @@
   }
 
   .alan { display: grid; gap: 7px; }
+  .alan[hidden] { display: none; }
   .alan input {
     width: 100%; min-width: 0; padding: 11px 13px; border-radius: 11px;
     border: 1.5px solid var(--cizgi); background: var(--panel-2); outline: none;
@@ -399,7 +408,7 @@
     <section class="kart yazici" id="yazici">
       <div class="kart-bas"><span class="nokta"></span><span class="etiket">Yeni görsel</span></div>
       <div class="istem-sar">
-        <textarea id="istem" placeholder="Ne üretelim? Yaz, mikrofona söyle ya da bir referans görsel bırak."></textarea>
+        <textarea id="istem" placeholder="Ne üretelim? Yaz, mikrofona söyle ya da dosya adlarıyla hazır bir görsel listesi yapıştır."></textarea>
         <div class="araclar">
           <button class="simge" id="mikrofon" type="button" title="Sesle yaz" aria-label="Sesle yaz">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
@@ -409,6 +418,11 @@
           </button>
           <span class="ipucu"><kbd>Ctrl</kbd> <kbd>Enter</kbd> ile ekle</span>
         </div>
+      </div>
+      <div class="toplu" id="toplu" hidden>
+        <strong id="toplu-yazi"></strong>
+        <span>Her dosya kendi adıyla ayrı bir iş olarak sıraya eklenir.</span>
+        <label><input type="checkbox" id="toplu-kapali"> Bölme, tek istem olarak ekle</label>
       </div>
       <input type="file" id="dosya" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
       <div class="refler" id="refler"></div>
@@ -739,19 +753,43 @@
   for (const ad of ['dragleave', 'drop']) yazici.addEventListener(ad, (olay) => { olay.preventDefault(); yazici.classList.remove('birak'); });
   yazici.addEventListener('drop', (olay) => refEkle([...olay.dataTransfer.files]));
 
+  // ---------- toplu liste: metinde birden çok görsel dosyası adı varsa işlere bölünür
+  const EKLE_SIMGESI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+  function listedekiDosyaSayisi() {
+    const bulunanlar = $('#istem').value.match(/[A-Za-z0-9][\w-]*\.(png|jpe?g|webp|gif)\b/gi) || [];
+    return new Set(bulunanlar.map((d) => d.toLowerCase())).size;
+  }
+  function topluMu() {
+    return listedekiDosyaSayisi() >= 2 && !$('#toplu-kapali').checked;
+  }
+  function topluyuCiz() {
+    const adet = listedekiDosyaSayisi();
+    $('#toplu').hidden = adet < 2;
+    $('#toplu-yazi').textContent = `Bu listede ${adet} görsel dosyası buldum.`;
+    $('#siraya-ekle').innerHTML = `${EKLE_SIMGESI} ${topluMu() ? `${adet} görseli sıraya ekle` : 'Sıraya ekle'}`;
+    $('#ad').closest('.alan').hidden = topluMu();
+  }
+  $('#istem').addEventListener('input', topluyuCiz);
+  $('#toplu-kapali').addEventListener('change', topluyuCiz);
+
   // ---------- sıraya ekle
   let tanima = null;
   async function sirayaEkle() {
     const istem = $('#istem').value.trim();
     if (!istem) { $('#istem').focus(); bildir('Önce bir istem yaz ya da söyle.', true); return; }
     if (tanima) tanima.stop();
-    const tamam = await eylem('/api/isler', { ad: $('#ad').value.trim(), istem, referanslar: refler.map(({ ad, veri }) => ({ ad, veri })) });
+    const referanslar = refler.map(({ ad, veri }) => ({ ad, veri }));
+    const tamam = topluMu()
+      ? await eylem('/api/isler/toplu', { metin: istem, referanslar })
+      : await eylem('/api/isler', { ad: $('#ad').value.trim(), istem, referanslar });
     if (!tamam) return;
+    if (tamam.eklenen) bildir(`${tamam.eklenen} görsel sıraya eklendi.`);
     $('#istem').value = '';
     $('#ad').value = '';
     refler.forEach((ref) => URL.revokeObjectURL(ref.adres));
     refler = [];
     refleriCiz();
+    topluyuCiz();
     $('#istem').focus();
   }
   $('#siraya-ekle').addEventListener('click', sirayaEkle);
