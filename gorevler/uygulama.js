@@ -14,6 +14,7 @@ async function calistir(baglam) {
   if (!secenekler.guncellemeden) {
     const sonuc = await guncelle(baglam);
     if (sonuc.durum === 'atlandi') gunluk(`Güncelleme denetlenemedi: ${sonuc.neden}.`);
+    baglam.veri.guncelleme = sonuc;
     if (sonuc.durum === 'guncellendi') {
       // Bellekteki kod eski sürüm; yeni sürümle baştan başla.
       gunluk('Yeni sürümle yeniden başlatılıyor…');

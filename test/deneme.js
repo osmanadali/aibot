@@ -344,6 +344,24 @@ async function ana() {
       uygulama.kill();
     }
 
+    // Pencere 5 saniyeden önce kapanırsa robot bunu "başka süreç devraldı" sayar ve açık kalır;
+    // o durumda arayüzden istek gelmeyince kendiliğinden kapanmalı.
+    ayarlar.arayuz.sessizKapanmaSaniye = 3;
+    ayarYaz();
+    const sessiz = spawn(process.execPath, [path.join(KOK, 'robot.js'), 'uygulama', ...uygArg], { stdio: 'ignore' });
+    const sessizKapandi = new Promise((coz) => sessiz.on('exit', coz));
+    try {
+      let acik = false;
+      for (let i = 0; i < 40 && !acik; i++) {
+        await new Promise((coz) => setTimeout(coz, 200));
+        acik = await chromium.connectOverCDP(`http://127.0.0.1:${PENCERE_PORTU}`).then(async (p) => { await (await p.newBrowserCDPSession()).send('Browser.close').catch(() => {}); return true; }, () => false);
+      }
+      const kod = await Promise.race([sessizKapandi, new Promise((coz) => setTimeout(() => coz('zaman aşımı'), 20000))]);
+      kontrol(acik && kod === 0, 'pencere erken kapansa da robot arkada açık kalmadı');
+    } finally {
+      sessiz.kill();
+    }
+
     console.log('\nTüm denemeler geçti.');
   } finally {
     await tarayiciyiKapat();

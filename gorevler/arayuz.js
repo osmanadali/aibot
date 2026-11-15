@@ -14,7 +14,7 @@ const path = require('path');
 const { fork, spawn } = require('child_process');
 const { dosyaAdinaCevir } = require('../lib/gorseller');
 const { jsonOku, ayarlariYukle, yerelAyarYaz } = require('../lib/ayarlar');
-const { kuruluSurum } = require('../lib/guncelle');
+const { kuruluSurum, sonSurum } = require('../lib/guncelle');
 const { tarayiciYolunuBul } = require('../lib/tarayici');
 
 const GORSEL_TURLERI = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
@@ -67,6 +67,10 @@ async function calistir(baglam) {
 
   let surec = null;
   let sonra = 'yok';
+  let yeniSurum = ''; // robot açıkken depoda görülen daha yeni sürüm
+  const acilisDenetimi = baglam.veri.guncelleme;
+  let guncellemeNotu = acilisDenetimi && acilisDenetimi.durum === 'atlandi' ? `güncelleme denetlenemedi: ${acilisDenetimi.neden}` : '';
+  let sessizAdim = 0; // arayüzden son istekten beri geçen denetim adımı
   let canli = {}; // ad -> { durum, neden }: çalışan süreçten gelen anlık bilgiler
   const gunlukSatirlari = [];
   const gunlugeYaz = (satir) => {
@@ -102,7 +106,12 @@ async function calistir(baglam) {
       sonra,
       gunluk: gunlukSatirlari,
       isler,
-      surum: { kisa: kuruluSurum(kok).slice(0, 7), guncellendi: Boolean(secenekler.guncellendi) },
+      surum: {
+        kisa: kuruluSurum(kok).slice(0, 7),
+        guncellendi: Boolean(secenekler.guncellendi),
+        yeniVar: Boolean(yeniSurum && yeniSurum !== kuruluSurum(kok)),
+        not: guncellemeNotu,
+      },
       ayarlar: {
         sonEk: (ayarlar.chatgpt || {}).sonEk || '',
         projeKlasoru: (ayarlar.claude || {}).projeKlasoru || '',
@@ -299,6 +308,7 @@ async function calistir(baglam) {
       yanit.writeHead(kod, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
       yanit.end(JSON.stringify(veri));
     };
+    sessizAdim = 0;
     try {
       // Başka sitelerin bu arayüze istek atmasını engelle.
       if (!izinliKaynaklar.has(istek.headers.host)) throw new IstekHatasi(403, 'Yalnızca bu bilgisayardan erişilebilir.');
@@ -393,6 +403,31 @@ async function calistir(baglam) {
   else {
     gunluk('Kapatmak için bu pencereyi kapat ya da Ctrl+C\'ye bas.');
     if (!secenekler.acma) tarayicidaAc(adres);
+  }
+
+  // Robot açık kalırken çıkan yeni sürümü fark et (kurulum, bir sonraki açılışta yapılır).
+  async function yeniSurumDenetle() {
+    const ayar = ayarOku().guncelleme || {};
+    if (ayar.kapali || !kuruluSurum(kok)) return;
+    try {
+      yeniSurum = await sonSurum(ayar);
+      if (guncellemeNotu.startsWith('güncelleme denetlenemedi')) guncellemeNotu = '';
+    } catch {
+      /* internet yoksa sessizce geç */
+    }
+  }
+  setTimeout(yeniSurumDenetle, secenekler.uygulama ? 10 * 60 * 1000 : 5000).unref();
+  setInterval(yeniSurumDenetle, 20 * 60 * 1000).unref();
+
+  // Uygulama penceresi kapandığı hâlde bu süreç bunu fark edemezse (pencereyi başka bir
+  // tarayıcı süreci devraldıysa) arayüzden uzun süre istek gelmeyince kendiliğinden kapan.
+  if (secenekler.uygulama) {
+    const esikMs = ((ayarOku().arayuz || {}).sessizKapanmaSaniye || 180) * 1000;
+    const adimMs = Math.min(15000, esikMs / 3);
+    setInterval(() => {
+      if (surec) sessizAdim = 0;
+      else if (++sessizAdim * adimMs >= esikMs) kapat();
+    }, adimMs).unref();
   }
 
   process.on('SIGINT', kapat);

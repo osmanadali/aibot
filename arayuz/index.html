@@ -102,8 +102,11 @@
     box-shadow: var(--golge);
   }
   .rozet::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--soluk); opacity: .5; }
-  .calisiyor .rozet { color: var(--vurgu-koyu); border-color: color-mix(in srgb, var(--vurgu) 45%, var(--cizgi)); }
-  .calisiyor .rozet::before { background: var(--vurgu); opacity: 1; animation: nabiz 1.2s ease-in-out infinite; }
+  .rozet.yeni { color: var(--vurgu-ustu); background: linear-gradient(180deg, var(--vurgu-2), var(--vurgu)); border-color: transparent; }
+  .rozet.yeni::before { background: var(--nane); opacity: 1; animation: nabiz 1.4s ease-in-out infinite; }
+  .rozet[hidden] { display: none; }
+  .calisiyor .rozet:not(.yeni) { color: var(--vurgu-koyu); border-color: color-mix(in srgb, var(--vurgu) 45%, var(--cizgi)); }
+  .calisiyor .rozet:not(.yeni)::before { background: var(--vurgu); opacity: 1; animation: nabiz 1.2s ease-in-out infinite; }
   @keyframes nabiz { 50% { transform: scale(1.7); opacity: .3; } }
 
   /* ---------- yerleşim */
@@ -387,6 +390,7 @@
 </svg>
   <div class="marka"><b>Robot</b><span>Görsel atölyesi</span></div>
   <div class="bosluk"></div>
+  <div class="rozet yeni" id="yeni-surum" hidden>Yeni sürüm hazır · Robot'u kapatıp yeniden aç</div>
   <div class="rozet" id="rozet">Boşta</div>
 </header>
 
@@ -583,6 +587,8 @@
   function ciz() {
     document.body.classList.toggle('calisiyor', durum.calisiyor);
     $('#rozet').textContent = durum.calisiyor ? 'Çalışıyor' : 'Boşta';
+    $('#yeni-surum').hidden = !durum.surum.yeniVar;
+    $('#surum').textContent = [durum.surum.kisa ? `Sürüm ${durum.surum.kisa}` : '', durum.surum.not].filter(Boolean).join(' · ');
 
     const say = (d) => durum.isler.filter((is) => is.durum === d).length;
     const bekleyen = say('bekliyor') + say('uretiliyor');
@@ -622,7 +628,6 @@
       $('#depo').value = durum.ayarlar.depoAdresi;
       $('#klasor-sec').hidden = !durum.ayarlar.klasorSecilebilir;
       $('#cikti-yeri').textContent = `Görseller buraya kaydedilir: ${durum.ayarlar.ciktiKlasoru}`;
-      if (durum.surum.kisa) $('#surum').textContent = `Sürüm ${durum.surum.kisa}`;
       if (durum.surum.guncellendi) {
         // Güncelleme bildirimi her sürüm için bir kez gösterilir.
         let gosterildi = false;

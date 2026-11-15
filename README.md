@@ -57,7 +57,12 @@ sürümle açılır. Kurulu sürüm arayüzün en altında yazar.
 Güncelleme şunlara dokunmaz: `ayarlar.yerel.json` (ayarların), `istemler.txt`,
 `veri/`, `cikti/`, `tarayici-profili/` (ChatGPT girişin).
 
-Elle denetlemek için `node robot.js guncelle`; kapatmak için `ayarlar.yerel.json`
+Robot açıkken yeni sürüm çıkarsa sağ üstte "Yeni sürüm hazır" yazısı belirir;
+kapatıp yeniden açman yeterli. Güncelleme denetlenemezse nedeni pencerenin en
+altında, sürümün yanında yazar.
+
+Güncelleme gelmiyorsa `guncelle.bat` dosyasına çift tıkla; ne olduğunu ekranda
+gösterir. Kapatmak için `ayarlar.yerel.json`
 içine `{ "guncelleme": { "kapali": true } }` yaz.
 
 ## Dosyayla kullanım
