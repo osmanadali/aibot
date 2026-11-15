@@ -97,6 +97,7 @@ async function ana() {
       kararliSaniye: 2,
       istemArasiSaniye: 0,
       denemeSayisi: 1,
+      ekBeklemeSaniye: 0,
     },
     gorselUret: { istemDosyasi: path.join(gecici, 'istemler.txt'), ciktiKlasoru: cikti },
     claude: { ...temel.claude, komut: sahteClaudeYaz(gecici, kayit), projeKlasoru: proje, mod: 'sohbet', devamEt: true },
@@ -129,6 +130,26 @@ async function ana() {
     const mesaj = ilk.argumanlar[ilk.argumanlar.length - 1];
     kontrol(mesaj.includes('assets/uretilen/sovalye.png') && mesaj.includes('002-yesil-bir-slime-ayni-kaynak.png'), 'mesajda iki görselin yolu var');
     kontrol(!mesaj.includes('hata-olmaz'), 'hata ekran görüntüsü gönderilmedi');
+
+    console.log('1b) ChatGPT\'nin yeni arayüzü: işaretsiz öğeler, giriş bekleme, referans, yazılı yanıt');
+    const yeniCikti = path.join(gecici, 'cikti-yeni');
+    const yeniIstemler = path.join(gecici, 'yeni-istemler.json');
+    const refDosyasi = path.join(gecici, 'referans.png');
+    fs.writeFileSync(refDosyasi, pngUret(400, 400, [200, 60, 60]));
+    fs.writeFileSync(yeniIstemler, JSON.stringify([
+      { ad: 'duz', istem: 'Kılıçlı bir şövalye' },
+      { ad: 'referansli', istem: 'Referanstaki gibi bir ejderha', referanslar: [refDosyasi] },
+      { ad: 'yazili', istem: 'YAZI ile yanıt ver' },
+    ]));
+    ayarlar.chatgpt.adres = `${site.adres}yeni`;
+    ayarYaz();
+    sonuc = await robotCalistir(['gorsel-uret', '--ayarlar', ayarDosyasi, '--istemler', yeniIstemler, '--cikti', yeniCikti]);
+    kontrol(/giriş yapılmamış/.test(sonuc.stdout), 'giriş düğmesi görünürken robot bekledi');
+    kontrol(fs.existsSync(path.join(yeniCikti, 'duz.png')) && fs.readFileSync(path.join(yeniCikti, 'duz.png')).equals(site.gorsel), 'işaretsiz arayüzde istem gönderildi ve görsel kaydedildi');
+    kontrol(fs.readFileSync(path.join(yeniCikti, 'referansli.png')).equals(site.ekliGorsel) && !fs.existsSync(path.join(yeniCikti, 'referansli-2.png')), 'referans doğru alana yüklendi ve çıktı sayılmadı');
+    kontrol(!fs.existsSync(path.join(yeniCikti, 'yazili.png')) && /Bu görseli üretemiyorum/.test(sonuc.stdout), 'yazılı yanıt hata olarak bildirildi');
+    ayarlar.chatgpt.adres = site.adres;
+    ayarYaz();
 
     console.log('2) Tekrar çalıştırma: bitenler atlanır, yalnızca eksik olan denenir');
     sonuc = await robotCalistir(['gorsel-uret', '--ayarlar', ayarDosyasi]);

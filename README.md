@@ -181,11 +181,15 @@ dosyaya kaydeder. Örnek:
 
 ### ChatGPT arayüzü değişirse
 
-Robot sayfadaki istem kutusunu, gönder ve durdur düğmelerini
-`chatgpt.seciciler` altındaki adreslerle bulur. ChatGPT arayüzünü değiştirirse
-robot "istem kutusu hazır olmadı" gibi bir hatayla durur; o zaman yalnızca bu
-adresleri güncellemek gerekir. Görselin kendisini bulmak bu adreslere bağlı
-değildir: robot, gönderimden sonra sayfada beliren yeni ve büyük resimleri alır.
+ChatGPT arayüzünü sık değiştirir. Robot bu yüzden sayfadaki öğeleri sabit adlarla
+değil, ne olduklarına bakarak bulur: istem kutusu görünen en büyük yazı alanıdır,
+gönder ve durdur düğmeleri etiketlerinden tanınır, üretilen görsel gönderimden
+sonra sayfada beliren yeni ve büyük resimdir.
+
+Yine de bir şey bulunamazsa robot günlüğe "Tanı:" ile başlayan bir satır yazar;
+bu satır sayfada gördüğü alanları ve düğmeleri listeler. O satır, neyin
+değiştiğini anlamak için yeterlidir. Belirli bir öğenin adresini elle vermek
+istersen `chatgpt.seciciler` altına yazabilirsin; orada yazanlar önce denenir.
 
 ## Yeni görev ekleme
 

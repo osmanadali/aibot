@@ -17,10 +17,9 @@
     "denemeArasiDakika": 15,
     "enKucukGorselPx": 256,
     "seciciler": {
-      "istemKutusu": "#prompt-textarea",
-      "gonderDugmesi": "[data-testid='send-button']",
+      "istemKutusu": "#prompt-textarea, #mobile-composer-prompt, textarea[name='prompt']",
+      "gonderDugmesi": "[data-testid='send-button'], #composer-submit-button",
       "durdurDugmesi": "[data-testid='stop-button']",
-      "asistanMesaji": "[data-message-author-role='assistant']",
       "girisDugmesi": "[data-testid='login-button']",
       "kullaniciMesaji": "[data-message-author-role='user']",
       "dosyaGirdisi": "input[type='file']"

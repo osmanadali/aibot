@@ -103,6 +103,77 @@ const SAYFA = (gorselKoku) => `<!doctype html>
   };
 </script>`;
 
+// ChatGPT'nin yeni arayüzüne benzeyen sayfa: işaretli (data-testid) öğe yok, istem kutusu
+// bir textarea, Enter yalnızca satır atlar, gönder düğmesi yazı girilince belirir, ekler
+// kullanıcı mesajının ALTINDA görünür. İlk açılışta 8 saniye "Oturum aç" düğmesi görünür.
+const YENI_SAYFA = (gorselKoku) => `<!doctype html>
+<meta charset="utf-8">
+<title>Sahte ChatGPT (yeni)</title>
+<button id="giris">Oturum aç</button>
+<div id="mesajlar"></div>
+<div class="cubuk">
+  <button aria-label="Dosya ekle">+</button>
+  <input type="file" id="octane-mobile-composer-camera-input" accept="image/*" capture hidden>
+  <input type="file" id="octane-mobile-composer-photos-input" accept="image/*" multiple hidden>
+  <input type="file" id="octane-mobile-composer-files-input" multiple hidden>
+  <textarea id="mobile-composer-prompt" name="prompt" placeholder="ChatGPT'ye sor"></textarea>
+  <button aria-label="Dikte">mik</button>
+  <button id="sesli" aria-label="Sesli modu kullan">ses</button>
+  <button id="yolla" aria-label="İstemi gönder" style="display:none">gönder</button>
+  <button id="kes" aria-label="Yanıtı durdur" style="display:none">dur</button>
+</div>
+<script>
+  // Giriş yalnızca ilk açılışta "yapılır"; sonraki sayfa yüklemelerinde oturum açıktır.
+  if (localStorage.getItem('girdi')) document.getElementById('giris').remove();
+  else setTimeout(() => { localStorage.setItem('girdi', '1'); document.getElementById('giris').remove(); }, 8000);
+  const kutu = document.getElementById('mobile-composer-prompt');
+  const mesajlar = document.getElementById('mesajlar');
+  const yolla = document.getElementById('yolla');
+  const sesli = document.getElementById('sesli');
+  const kes = document.getElementById('kes');
+  const fotograflar = document.getElementById('octane-mobile-composer-photos-input');
+  let yukleniyor = false;
+  let sayac = 0;
+  const dugmeleriAyarla = () => {
+    const yazili = kutu.value.trim().length > 0;
+    yolla.style.display = yazili ? '' : 'none';
+    sesli.style.display = yazili ? 'none' : '';
+    yolla.disabled = yukleniyor;
+  };
+  kutu.addEventListener('input', dugmeleriAyarla);
+  fotograflar.addEventListener('change', () => { yukleniyor = true; dugmeleriAyarla(); setTimeout(() => { yukleniyor = false; dugmeleriAyarla(); }, 900); });
+  // Yanlış alana dosya verilirse belli olsun.
+  for (const ad of ['camera', 'files']) document.getElementById('octane-mobile-composer-' + ad + '-input').addEventListener('change', () => { document.title = 'YANLIS ALAN: ' + ad; });
+  yolla.onclick = () => {
+    const istem = kutu.value.trim();
+    if (!istem || yukleniyor) return;
+    const ekler = [...fotograflar.files];
+    fotograflar.value = '';
+    kutu.value = '';
+    dugmeleriAyarla();
+    const kullanici = document.createElement('div');
+    kullanici.textContent = istem;
+    mesajlar.append(kullanici);
+    if (ekler.length) {
+      const ekKutusu = document.createElement('div');
+      for (const ek of ekler) { const resim = document.createElement('img'); resim.src = URL.createObjectURL(ek); ekKutusu.append(resim); }
+      mesajlar.append(ekKutusu);
+    }
+    kes.style.display = '';
+    setTimeout(() => {
+      const asistan = document.createElement('div');
+      if (istem.includes('YAZI')) asistan.textContent = 'Bu görseli üretemiyorum.';
+      else {
+        const resim = document.createElement('img');
+        resim.src = ${JSON.stringify(gorselKoku)} + '/gorsel/yeni-' + (++sayac) + '-' + Date.now() + '.png' + (ekler.length ? '?ek=' + ekler.length : '');
+        asistan.append(resim);
+      }
+      mesajlar.append(asistan);
+      setTimeout(() => { kes.style.display = 'none'; }, 700);
+    }, 2200);
+  };
+</script>`;
+
 function dinle(sunucu) {
   return new Promise((coz) => sunucu.listen(0, '127.0.0.1', () => coz(sunucu.address().port)));
 }
@@ -126,7 +197,7 @@ async function sahteChatgptBaslat() {
   const site = http.createServer((istek, yanit) => {
     if (gorselYaniti(istek, yanit)) return;
     yanit.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-    yanit.end(SAYFA(`http://127.0.0.1:${gorselPortu}`));
+    yanit.end((istek.url.startsWith('/yeni') ? YENI_SAYFA : SAYFA)(`http://127.0.0.1:${gorselPortu}`));
   });
   const sitePortu = await dinle(site);
 
