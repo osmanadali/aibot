@@ -4,17 +4,18 @@
 // Sınadıkları: tarayıcıyı açıp bağlanma, istemi yazıp gönderme, görseli bekleyip
 // indirme (aynı ve farklı kaynaktan), yazılı yanıtta hata verme, kaldığı yerden
 // devam etme, görselleri projeye kopyalayıp Claude Code'a iletme, görselleri
-// commit'leyip uzak depoya gönderme.
+// commit'leyip uzak depoya gönderme, arayüzden referans görselli iş çalıştırma.
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 const { chromium } = require('playwright-core');
-const { sahteChatgptBaslat } = require('./sahte-chatgpt');
+const { sahteChatgptBaslat, pngUret } = require('./sahte-chatgpt');
 
 const KOK = path.join(__dirname, '..');
 const PORT = 9339;
+const ARAYUZ_PORTU = 4399;
 
 function kontrol(kosul, aciklama) {
   if (!kosul) throw new Error(`BAŞARISIZ: ${aciklama}`);
@@ -169,6 +170,53 @@ async function ana() {
     const oncekiCommit = git(uzakDepo, 'rev-parse', 'ana');
     sonuc = await robotCalistir(['git-gonder', '--ayarlar', ayarDosyasi]);
     kontrol(sonuc.status === 0 && git(uzakDepo, 'rev-parse', 'ana') === oncekiCommit, 'tekrar çalıştırınca boş commit oluşmadı');
+
+    console.log('5) Arayüz: referans görselli iş ekleme, başlatma, sonucu görme');
+    const arayuz = spawn(
+      process.execPath,
+      [path.join(KOK, 'robot.js'), 'arayuz', '--acma', '--port', String(ARAYUZ_PORTU), '--ayarlar', ayarDosyasi, '--veri', path.join(gecici, 'veri')],
+      { stdio: 'ignore' }
+    );
+    try {
+      const taban = `http://127.0.0.1:${ARAYUZ_PORTU}`;
+      const istek = async (yol, govde, basliklar = {}) => {
+        const yanit = await fetch(taban + yol, govde ? { method: 'POST', headers: { 'content-type': 'application/json', ...basliklar }, body: JSON.stringify(govde) } : {});
+        return { kod: yanit.status, veri: await yanit.json().catch(() => ({})) };
+      };
+      let hazir = false;
+      for (let i = 0; i < 40 && !hazir; i++) {
+        await new Promise((coz) => setTimeout(coz, 250));
+        hazir = await fetch(`${taban}/api/durum`).then((y) => y.ok, () => false);
+      }
+      kontrol(hazir, 'arayüz sunucusu açıldı');
+      kontrol((await fetch(taban + '/').then((y) => y.text())).includes('<title>Robot</title>'), 'arayüz sayfası sunuluyor');
+
+      const referans = pngUret(400, 400, [200, 60, 60]).toString('base64');
+      let yanit = await istek('/api/isler', { ad: 'Kırmızı Ejderha', istem: 'Referanstaki ejderhayı pixel-art yap', referanslar: [{ ad: 'ref.png', veri: referans }] });
+      let is = yanit.veri.isler[0];
+      kontrol(yanit.kod === 200 && is.ad === 'kirmizi-ejderha' && is.durum === 'bekliyor' && is.referanslar.length === 1, 'iş referans görseliyle sıraya eklendi');
+      kontrol((await istek('/api/isler', { istem: 'x' }, { origin: 'http://kotu.example' })).kod === 403, 'başka bir siteden gelen istek reddedildi');
+      kontrol((await istek('/api/isler', { istem: '   ' })).kod === 400, 'boş istem reddedildi');
+
+      yanit = await istek('/api/baslat', { sonra: 'yok' });
+      kontrol(yanit.kod === 200 && yanit.veri.calisiyor, 'sıra başlatıldı');
+      for (let i = 0; i < 120 && yanit.veri.calisiyor; i++) {
+        await new Promise((coz) => setTimeout(coz, 500));
+        yanit = await istek('/api/durum');
+      }
+      is = yanit.veri.isler[0];
+      kontrol(!yanit.veri.calisiyor && is.durum === 'bitti' && is.dosyalar.length === 1, 'iş bitti ve tek görsel kaydedildi (referans çıktı sayılmadı)');
+      const sonucBayt = Buffer.from(await fetch(taban + is.dosyalar[0].adres).then((y) => y.arrayBuffer()));
+      kontrol(sonucBayt.equals(site.ekliGorsel), 'referans ChatGPT\'ye eklendi ve dönen görsel arayüzden açılabiliyor');
+      kontrol(yanit.veri.gunluk.some((satir) => satir.includes('kaydedildi')), 'günlük arayüze aktarıldı');
+
+      yanit = await istek('/api/isler/yeniden', { id: is.id });
+      kontrol(yanit.veri.isler[0].durum === 'bekliyor' && !fs.existsSync(path.join(cikti, is.dosyalar[0].ad)), '"yeniden üret" görseli silip işi sıraya geri aldı');
+      yanit = await istek('/api/isler/sil', { id: is.id });
+      kontrol(yanit.veri.isler.length === 0, 'iş sıradan kaldırıldı');
+    } finally {
+      arayuz.kill();
+    }
 
     console.log('\nTüm denemeler geçti.');
   } finally {

@@ -8,25 +8,30 @@ const fs = require('fs');
 const path = require('path');
 const { tarayiciyaBaglan, bekle } = require('../lib/tarayici');
 const { gorselUret } = require('../lib/chatgpt');
-
-function dosyaAdinaCevir(metin) {
-  const harfler = { ç: 'c', ğ: 'g', ı: 'i', ö: 'o', ş: 's', ü: 'u' };
-  return (
-    metin
-      .toLocaleLowerCase('tr-TR')
-      .replace(/[çğıöşü]/g, (h) => harfler[h])
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 40)
-      .replace(/-+$/, '') || 'gorsel'
-  );
-}
+const { dosyaAdinaCevir } = require('../lib/gorseller');
 
 function istemleriOku(dosya) {
   if (!fs.existsSync(dosya)) throw new Error(`İstem dosyası bulunamadı: ${dosya}`);
   const istemler = [];
   const kullanilan = new Set();
-  const satirlar = fs.readFileSync(dosya, 'utf8').replace(/^﻿/, '').split(/\r?\n/);
+  const ekle = (ad, istem, referanslar) => {
+    // Aynı ad iki kez geçerse dosyalar birbirinin üstüne yazılmasın.
+    let benzersiz = ad;
+    for (let n = 2; kullanilan.has(benzersiz); n++) benzersiz = `${ad}-${n}`;
+    kullanilan.add(benzersiz);
+    istemler.push({ ad: benzersiz, istem, referanslar });
+  };
+
+  // Arayüzün yazdığı liste: [{ ad, istem, referanslar: [dosya yolları] }]
+  if (dosya.toLowerCase().endsWith('.json')) {
+    for (const is of JSON.parse(fs.readFileSync(dosya, 'utf8'))) {
+      const istem = String(is.istem || '').replace(/\s+/g, ' ').trim();
+      if (istem) ekle(dosyaAdinaCevir(is.ad || istem), istem, is.referanslar || []);
+    }
+    return istemler;
+  }
+
+  const satirlar = fs.readFileSync(dosya, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/);
   for (const ham of satirlar) {
     const satir = ham.trim();
     if (!satir || satir.startsWith('#')) continue;
@@ -40,17 +45,13 @@ function istemleriOku(dosya) {
     } else {
       ad = `${String(sira).padStart(3, '0')}-${dosyaAdinaCevir(satir)}`;
     }
-    // Aynı ad iki kez geçerse dosyalar birbirinin üstüne yazılmasın.
-    let benzersiz = ad;
-    for (let n = 2; kullanilan.has(benzersiz); n++) benzersiz = `${ad}-${n}`;
-    kullanilan.add(benzersiz);
-    istemler.push({ ad: benzersiz, istem });
+    ekle(ad, istem, []);
   }
   return istemler;
 }
 
 async function calistir(baglam) {
-  const { ayarlar, secenekler, gunluk } = baglam;
+  const { ayarlar, secenekler, gunluk, bildir } = baglam;
   const ayar = ayarlar.chatgpt;
   const istemDosyasi = path.resolve(baglam.kok, secenekler.istemler || ayarlar.gorselUret.istemDosyasi);
   const cikti = path.resolve(baglam.kok, secenekler.cikti || ayarlar.gorselUret.ciktiKlasoru);
@@ -69,13 +70,14 @@ async function calistir(baglam) {
 
   try {
     for (let i = 0; i < istemler.length; i++) {
-      const { ad, istem } = istemler[i];
+      const { ad, istem, referanslar } = istemler[i];
       const etiket = `[${i + 1}/${istemler.length}] ${ad}`;
       const anahtar = `${ad}|${istem}`;
 
       const onceki = (durum[anahtar] || []).filter((dosya) => fs.existsSync(path.join(cikti, dosya)));
       if (onceki.length && !secenekler.yeniden) {
         gunluk(`${etiket}: daha önce üretilmiş, atlanıyor.`);
+        bildir({ tur: 'istem', ad, durum: 'bitti' });
         continue;
       }
 
@@ -92,7 +94,8 @@ async function calistir(baglam) {
       for (let deneme = 1; deneme <= ayar.denemeSayisi && !gorseller; deneme++) {
         try {
           gunluk(`${etiket}: üretiliyor…${deneme > 1 ? ` (deneme ${deneme})` : ''}`);
-          gorseller = await gorselUret(sayfa, tamIstem, ayar, gunluk);
+          bildir({ tur: 'istem', ad, durum: 'uretiliyor' });
+          gorseller = await gorselUret(sayfa, tamIstem, ayar, gunluk, referanslar);
         } catch (hata) {
           // Playwright hatalarının çok satırlı çağrı dökümünü at, ilk satır yeter.
           sonHata = new Error(String(hata.message).split('\n')[0]);
@@ -108,6 +111,7 @@ async function calistir(baglam) {
         const kanit = path.join(cikti, `hata-${ad}.png`);
         await sayfa.screenshot({ path: kanit }).catch(() => {});
         basarisizlar.push({ ad, neden: sonHata.message });
+        bildir({ tur: 'istem', ad, durum: 'hata', neden: sonHata.message });
         gunluk(`${etiket}: BAŞARISIZ. Ekran görüntüsü: ${kanit}`);
         if (++ustUsteHata >= 2) {
           gunluk('Üst üste 2 istem başarısız oldu; görsel limiti dolmuş olabilir. Robot duruyor.');
@@ -127,6 +131,7 @@ async function calistir(baglam) {
       fs.writeFileSync(durumDosyasi, JSON.stringify(durum, null, 2));
       uretilenler.push(...dosyalar.map((dosya) => path.join(cikti, dosya)));
       gunluk(`${etiket}: kaydedildi -> ${dosyalar.join(', ')}`);
+      bildir({ tur: 'istem', ad, durum: 'bitti' });
     }
   } finally {
     if (sayfa) await sayfa.close().catch(() => {});

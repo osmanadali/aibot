@@ -1,12 +1,13 @@
 # Robot
 
 Bilgisayarında tekrarlayan işleri senin yerine yapan kişisel robot. Tamamen kendi
-bilgisayarında çalışır. Şu an üç yeteneği var:
+bilgisayarında çalışır. Bir arayüzü ve üç yeteneği var:
 
 | Görev | Ne yapar |
 | --- | --- |
 | `gorsel-uret` | `istemler.txt` içindeki her satırı ChatGPT'ye (tarayıcıda) yazar, görseli bekler, `cikti/` klasörüne kaydeder. |
 | `claude-gonder` | Görselleri oyun projenin klasörüne kopyalar ve o klasörde bir Claude Code sohbetine iletir. |
+| `arayuz` | Tarayıcıda açılan arayüzü başlatır: istem yaz ya da söyle, referans görsel ekle, sırayı başlat. |
 | `git-gonder` | Görselleri oyun projenin klasörüne kopyalar, commit'ler ve GitHub'a gönderir. |
 
 İki hazır akış var: `oyun-gorselleri` görselleri üretip bilgisayarındaki Claude Code
@@ -24,7 +25,26 @@ sohbetine iletir; `oyun-gorselleri-github` görselleri üretip GitHub'a gönderi
 `git-gonder` için Git, `claude-gonder` için bilgisayarında Claude Code komut satırı (`claude` komutu) kurulu
 ve giriş yapılmış olmalı.
 
-## Kullanım
+## Arayüzle kullanım
+
+`arayuz.bat` dosyasına çift tıkla. Tarayıcında `http://127.0.0.1:4317` adresinde
+robotun arayüzü açılır; siyah pencere açık kaldıkça çalışır.
+
+- **İstem:** Kutuya yaz ya da mikrofon düğmesine basıp söyle (Chrome ve Edge'de
+  çalışır; ses, tarayıcının kendi ses tanıma hizmetiyle yazıya çevrilir).
+- **Referans görsel:** Görsel düğmesiyle seç, kutuya sürükleyip bırak ya da
+  Ctrl+V ile yapıştır. Referanslar istemle birlikte ChatGPT'ye yüklenir.
+- **Sıraya ekle**, sonra **Başlat.** Robot bekleyen işleri sırayla üretir; her
+  kartta durumu ve bitince görseli görürsün. İlk seferde açılan robot
+  tarayıcısında ChatGPT'ye giriş yapman gerekir.
+- **Bitince:** Görselleri Claude Code sohbetine ya da GitHub'a göndermeyi
+  seçebilirsin. Claude Code sohbeti robotun siyah penceresinde açılır.
+- Beğenmediğin görselde ↻ düğmesi görseli silip işi yeniden sıraya alır.
+- **Ayarlar** bölümünden ortak stili ve oyun projesi klasörünü değiştirebilirsin.
+
+Arayüzün işleri `veri/` klasöründe, görseller `cikti/` klasöründe durur.
+
+## Dosyayla kullanım
 
 1. `istemler.txt` dosyasına istemlerini yaz (her satır bir görsel).
 2. `calistir.bat` dosyasına çift tıkla.
@@ -110,6 +130,7 @@ Başarısız her istem için `cikti/hata-<ad>.png` ekran görüntüsü kaydedili
 | `git.projeKlasoru` / `git.hedefAltKlasor` | Boş bırakılırsa `claude` altındaki değerler kullanılır. |
 | `git.uzak` | Gönderilecek uzak depo adı (varsayılan `origin`). |
 | `git.commitMesaji` | Commit mesajı; `{adet}` yerine görsel sayısı yazılır. |
+| `arayuz.port` | Arayüzün açıldığı port (varsayılan 4317). |
 | `akislar` | Art arda çalışacak görev listeleri. |
 
 ### ChatGPT arayüzü değişirse
@@ -149,6 +170,8 @@ içindeki `tarayiciyaBaglan` ile aynı (giriş yapılmış) tarayıcıyı kullan
 - Robot ChatGPT planındaki görsel limitini aşamaz; limit dolunca durur.
 - OpenAI'nin kullanım şartları çıktının otomatik yollarla alınmasını kısıtlar.
   Robot bu yüzden yavaş ve tek tek çalışır; kullanım kararı ve sorumluluğu sende.
+- Arayüz yalnızca bu bilgisayardan açılabilir; başka cihazlar ve başka siteler
+  ona erişemez.
 - Robot çalışırken tarayıcı, yalnızca bu bilgisayardan erişilebilen bir denetim
   kapısı (varsayılan 9222) açar. Robotun tarayıcı penceresini işin bitince
   kapatabilirsin.

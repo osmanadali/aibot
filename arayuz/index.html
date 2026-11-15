@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robot</title>
+<style>
+  :root {
+    --zemin: #f3efe6;
+    --panel: #fffdf8;
+    --panel-2: #f8f4eb;
+    --murekkep: #1d1a16;
+    --soluk: #6e675c;
+    --cizgi: #e0d9ca;
+    --vurgu: #e4521b;
+    --vurgu-koyu: #c4410f;
+    --vurgu-ustu: #fff;
+    --tamam: #2c8a57;
+    --suruyor: #b97a09;
+    --hata: #c23b3b;
+    --golge: 0 1px 2px rgba(40, 30, 10, .06), 0 8px 24px -12px rgba(40, 30, 10, .18);
+    --dama-a: #ece6d8;
+    --dama-b: #f7f3ea;
+    --yazi: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono: "Cascadia Code", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --zemin: #121110;
+      --panel: #1b1917;
+      --panel-2: #232120;
+      --murekkep: #f2ede3;
+      --soluk: #a19a8e;
+      --cizgi: #312e2a;
+      --vurgu: #ff7a45;
+      --vurgu-koyu: #ff9163;
+      --vurgu-ustu: #1c0c04;
+      --tamam: #62c68d;
+      --suruyor: #e8b44d;
+      --hata: #f27676;
+      --golge: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 28px -14px rgba(0, 0, 0, .7);
+      --dama-a: #262422;
+      --dama-b: #1f1d1b;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { color-scheme: light dark; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font: 15px/1.5 var(--yazi);
+    color: var(--murekkep);
+    background-color: var(--zemin);
+    background-image: radial-gradient(color-mix(in srgb, var(--murekkep) 9%, transparent) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--vurgu); outline-offset: 2px; }
+
+  /* ---------- üst şerit */
+  .ust {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 14px;
+    padding: 18px clamp(16px, 4vw, 40px) 12px;
+    background: color-mix(in srgb, var(--zemin) 82%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--cizgi);
+  }
+  .yuz {
+    width: 34px; height: 30px; border-radius: 9px;
+    background: var(--vurgu);
+    display: grid; grid-template-columns: 1fr 1fr; place-items: center;
+    padding: 0 7px 3px;
+    position: relative;
+  }
+  .yuz::before {
+    content: ""; position: absolute; top: -7px; left: 50%;
+    width: 2px; height: 7px; background: var(--vurgu); transform: translateX(-50%);
+    box-shadow: 0 -3px 0 2px var(--vurgu);
+    border-radius: 2px;
+  }
+  .yuz i { width: 6px; height: 6px; border-radius: 50%; background: var(--vurgu-ustu); }
+  .calisiyor .yuz i { animation: kirp 1.6s infinite; }
+  @keyframes kirp { 0%, 44%, 56%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.15); } }
+  .marka { font: 700 15px/1 var(--mono); letter-spacing: .22em; text-transform: uppercase; }
+  .bosluk { flex: 1; }
+  .rozet {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--cizgi); background: var(--panel);
+    font-size: 13px; color: var(--soluk);
+  }
+  .rozet::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--soluk); opacity: .5; }
+  .calisiyor .rozet { color: var(--murekkep); border-color: color-mix(in srgb, var(--vurgu) 50%, var(--cizgi)); }
+  .calisiyor .rozet::before { background: var(--vurgu); opacity: 1; animation: nabiz 1.2s ease-in-out infinite; }
+  @keyframes nabiz { 50% { transform: scale(1.6); opacity: .35; } }
+
+  /* ---------- yerleşim */
+  .sayfa {
+    display: grid; gap: 24px;
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 1320px; margin: 0 auto;
+    padding: 24px clamp(16px, 4vw, 40px) 64px;
+  }
+  @media (min-width: 960px) {
+    .sayfa { grid-template-columns: 400px minmax(0, 1fr); align-items: start; }
+    .sol { position: sticky; top: 84px; }
+  }
+  .sol { display: grid; gap: 16px; }
+  .kart {
+    background: var(--panel);
+    border: 1px solid var(--cizgi);
+    border-radius: 16px;
+    box-shadow: var(--golge);
+  }
+  .etiket { font: 600 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--soluk); }
+
+  /* ---------- istem kutusu */
+  .yazici { padding: 18px; display: grid; gap: 14px; position: relative; }
+  .yazici.birak { outline: 2px dashed var(--vurgu); outline-offset: -6px; }
+  .istem-sar {
+    border: 1px solid var(--cizgi); border-radius: 12px; background: var(--panel-2);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .istem-sar:focus-within { border-color: var(--vurgu); box-shadow: 0 0 0 3px color-mix(in srgb, var(--vurgu) 18%, transparent); }
+  textarea#istem {
+    display: block; width: 100%; min-height: 132px; resize: vertical;
+    padding: 14px 14px 6px; border: 0; background: transparent; outline: none;
+    font-size: 16px; line-height: 1.5;
+  }
+  textarea#istem::placeholder { color: color-mix(in srgb, var(--soluk) 75%, transparent); }
+  .araclar { display: flex; align-items: center; gap: 6px; padding: 6px 8px 8px; }
+  .simge {
+    display: inline-grid; place-items: center;
+    width: 36px; height: 36px; border-radius: 10px;
+    border: 1px solid transparent; background: transparent; color: var(--soluk);
+    transition: background .15s, color .15s;
+  }
+  .simge:hover { background: color-mix(in srgb, var(--murekkep) 8%, transparent); color: var(--murekkep); }
+  .simge:disabled { opacity: .35; cursor: not-allowed; }
+  .simge svg { width: 19px; height: 19px; }
+  .simge.dinliyor { background: var(--hata); color: #fff; animation: dinle 1.3s ease-in-out infinite; }
+  @keyframes dinle { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--hata) 22%, transparent); } }
+  .ipucu { font-size: 12.5px; color: var(--soluk); margin-left: auto; padding-right: 6px; }
+
+  .refler { display: flex; flex-wrap: wrap; gap: 8px; }
+  .refler:empty { display: none; }
+  .ref { position: relative; width: 64px; height: 64px; border-radius: 10px; overflow: hidden; border: 1px solid var(--cizgi); }
+  .ref img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ref button {
+    position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border-radius: 50%;
+    border: 0; background: rgba(0, 0, 0, .65); color: #fff; font-size: 13px; line-height: 1;
+    display: grid; place-items: center;
+  }
+
+  .alan { display: grid; gap: 6px; }
+  .alan input {
+    width: 100%; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--cizgi); background: var(--panel-2); outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .alan input:focus { border-color: var(--vurgu); box-shadow: 0 0 0 3px color-mix(in srgb, var(--vurgu) 18%, transparent); }
+  .alan small { color: var(--soluk); font-size: 12.5px; }
+
+  .dugme {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 11px 18px; border-radius: 11px; border: 1px solid transparent;
+    font-weight: 600; white-space: nowrap;
+    transition: transform .08s, background .15s, border-color .15s;
+  }
+  .dugme:active { transform: translateY(1px); }
+  .dugme svg { width: 17px; height: 17px; }
+  .dugme.ana { background: var(--vurgu); color: var(--vurgu-ustu); }
+  .dugme.ana:hover { background: var(--vurgu-koyu); }
+  .dugme.ikincil { background: var(--murekkep); color: var(--zemin); }
+  .dugme.ikincil:hover { opacity: .88; }
+  .dugme.dur { background: transparent; border-color: var(--hata); color: var(--hata); }
+  .dugme.dur:hover { background: color-mix(in srgb, var(--hata) 12%, transparent); }
+  .dugme:disabled { opacity: .45; cursor: not-allowed; }
+
+  details.ayar { padding: 0; }
+  details.ayar summary {
+    list-style: none; cursor: pointer; padding: 14px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  details.ayar summary::-webkit-details-marker { display: none; }
+  details.ayar summary::after { content: "+"; font: 400 18px/1 var(--mono); color: var(--soluk); }
+  details.ayar[open] summary::after { content: "–"; }
+  .ayar-ic { padding: 0 18px 18px; display: grid; gap: 14px; }
+
+  /* ---------- sıra */
+  .sira-ust { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-bottom: 16px; }
+  .sira-ust h2 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.01em; }
+  .sayim { color: var(--soluk); font-size: 13.5px; }
+  .bitince { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--soluk); }
+  .bitince select {
+    padding: 9px 30px 9px 12px; border-radius: 10px; border: 1px solid var(--cizgi);
+    background: var(--panel); color: var(--murekkep);
+  }
+
+  .izgara { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  @media (max-width: 520px) { .izgara { gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .is { overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+  .onizleme {
+    position: relative; aspect-ratio: 1; display: grid; place-items: center;
+    background-color: var(--dama-b);
+    background-image:
+      linear-gradient(45deg, var(--dama-a) 25%, transparent 25%, transparent 75%, var(--dama-a) 75%),
+      linear-gradient(45deg, var(--dama-a) 25%, transparent 25%, transparent 75%, var(--dama-a) 75%);
+    background-size: 20px 20px; background-position: 0 0, 10px 10px;
+    border-bottom: 1px solid var(--cizgi);
+  }
+  .onizleme > a, .onizleme > a img { display: block; width: 100%; height: 100%; }
+  .onizleme > a img { object-fit: contain; }
+  .onizleme .bos { color: var(--soluk); opacity: .55; }
+  .onizleme .bos svg { width: 44px; height: 44px; }
+  .onizleme.uretiliyor::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(110deg, transparent 30%, color-mix(in srgb, var(--vurgu) 28%, transparent) 50%, transparent 70%);
+    background-size: 220% 100%; animation: tara 1.5s linear infinite;
+  }
+  @keyframes tara { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+  .onizleme .ek-sayisi {
+    position: absolute; right: 8px; bottom: 8px; padding: 2px 8px; border-radius: 999px;
+    background: rgba(0, 0, 0, .65); color: #fff; font: 600 11.5px/1.6 var(--mono);
+  }
+  .kucuk-refler { position: absolute; left: 8px; bottom: 8px; display: flex; }
+  .kucuk-refler img {
+    width: 34px; height: 34px; object-fit: cover; border-radius: 8px;
+    border: 2px solid var(--panel); margin-right: -10px; background: var(--panel);
+  }
+  .is-govde { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
+  .is-bas { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .is-ad { font: 600 13px/1.3 var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+  .is-istem {
+    margin: 0; font-size: 13.5px; color: var(--soluk);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .is-neden { margin: 0; font-size: 12.5px; color: var(--hata); }
+  .cip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px;
+    font: 600 11.5px/1.7 var(--yazi); white-space: nowrap;
+    color: var(--renk); background: color-mix(in srgb, var(--renk) 13%, transparent);
+  }
+  .cip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .cip.bekliyor { --renk: var(--soluk); }
+  .cip.uretiliyor { --renk: var(--suruyor); }
+  .cip.uretiliyor::before { animation: nabiz 1.1s ease-in-out infinite; }
+  .cip.bitti { --renk: var(--tamam); }
+  .cip.hata { --renk: var(--hata); }
+  .is-eylem { display: flex; gap: 2px; margin: auto -6px -6px; padding-top: 2px; }
+  .is-eylem .simge { width: 32px; height: 32px; }
+  .is-eylem .simge svg { width: 16px; height: 16px; }
+  .is-eylem .sil { margin-left: auto; }
+  .is-eylem .sil:hover { color: var(--hata); }
+
+  .bos-sira {
+    grid-column: 1 / -1; padding: 56px 24px; text-align: center; color: var(--soluk);
+    border: 1.5px dashed var(--cizgi); border-radius: 16px; background: color-mix(in srgb, var(--panel) 60%, transparent);
+  }
+  .bos-sira strong { display: block; color: var(--murekkep); font-size: 17px; margin-bottom: 4px; }
+
+  /* ---------- günlük */
+  details.gunluk { margin-top: 24px; }
+  details.gunluk summary { cursor: pointer; padding: 12px 16px; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+  details.gunluk summary::-webkit-details-marker { display: none; }
+  details.gunluk summary::after { content: "+"; font: 400 18px/1 var(--mono); color: var(--soluk); }
+  details.gunluk[open] summary::after { content: "–"; }
+  details.gunluk pre {
+    margin: 0; padding: 14px 16px; max-height: 260px; overflow: auto;
+    border-top: 1px solid var(--cizgi);
+    font: 12.5px/1.65 var(--mono); color: var(--soluk); white-space: pre-wrap; word-break: break-word;
+  }
+
+  .bildirim {
+    position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px);
+    max-width: min(560px, calc(100vw - 32px));
+    padding: 12px 18px; border-radius: 12px;
+    background: var(--murekkep); color: var(--zemin); font-size: 14px;
+    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, .45);
+    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 20;
+  }
+  .bildirim.acik { opacity: 1; transform: translate(-50%, 0); }
+  .bildirim.kotu { background: var(--hata); color: #fff; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<header class="ust">
+  <div class="yuz" aria-hidden="true"><i></i><i></i></div>
+  <div class="marka">Robot</div>
+  <div class="bosluk"></div>
+  <div class="rozet" id="rozet">Boşta</div>
+</header>
+
+<main class="sayfa">
+  <div class="sol">
+    <section class="kart yazici" id="yazici">
+      <div class="etiket">Yeni görsel</div>
+      <div class="istem-sar">
+        <textarea id="istem" placeholder="Ne üretelim? Yaz, mikrofona söyle ya da bir referans görsel bırak."></textarea>
+        <div class="araclar">
+          <button class="simge" id="mikrofon" type="button" title="Sesle yaz" aria-label="Sesle yaz">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+          </button>
+          <button class="simge" id="ekle-ref" type="button" title="Referans görsel ekle" aria-label="Referans görsel ekle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m4 17 5-5 4 4 3-3 4 4"/></svg>
+          </button>
+          <span class="ipucu">Ctrl + Enter ile ekle</span>
+        </div>
+      </div>
+      <input type="file" id="dosya" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+      <div class="refler" id="refler"></div>
+      <label class="alan">
+        <span class="etiket">Dosya adı · isteğe bağlı</span>
+        <input id="ad" placeholder="ör. kahraman" autocomplete="off">
+      </label>
+      <button class="dugme ikincil" id="siraya-ekle" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Sıraya ekle
+      </button>
+    </section>
+
+    <details class="kart ayar">
+      <summary><span class="etiket">Ayarlar</span></summary>
+      <div class="ayar-ic">
+        <label class="alan">
+          <span class="etiket">Ortak stil</span>
+          <input id="son-ek" placeholder="ör. pixel-art, şeffaf arka plan" autocomplete="off">
+          <small>Her istemin sonuna eklenir.</small>
+        </label>
+        <label class="alan">
+          <span class="etiket">Oyun projesi klasörü</span>
+          <input id="proje" placeholder="C:\Oyunlar\benim-oyunum" autocomplete="off" spellcheck="false">
+          <small>Claude Code ya da GitHub'a gönderirken kullanılır.</small>
+        </label>
+        <small id="cikti-yeri" style="color: var(--soluk); font-size: 12.5px"></small>
+      </div>
+    </details>
+  </div>
+
+  <section>
+    <div class="sira-ust">
+      <h2>Sıra</h2>
+      <span class="sayim" id="sayim"></span>
+      <span class="bosluk"></span>
+      <label class="bitince">Bitince
+        <select id="sonra">
+          <option value="yok">hiçbir şey yapma</option>
+          <option value="claude">Claude Code sohbetine gönder</option>
+          <option value="github">GitHub'a gönder</option>
+        </select>
+      </label>
+      <button class="dugme ana" id="baslat" type="button"></button>
+    </div>
+    <div class="izgara" id="izgara"></div>
+    <details class="kart gunluk" id="gunluk-kutu">
+      <summary><span class="etiket">Günlük</span></summary>
+      <pre id="gunluk"></pre>
+    </details>
+  </section>
+</main>
+
+<div class="bildirim" id="bildirim" role="status"></div>
+
+<script>
+  const $ = (secici) => document.querySelector(secici);
+  const SIMGE = {
+    oynat: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg>',
+    dur: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
+    yeniden: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 6.3M20 4v7h-7"/></svg>',
+    sil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+    resim: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m4 17 5-5 4 4 3-3 4 4"/></svg>',
+    uyari: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2.8 19.5h18.4L12 4zM12 10v4.5M12 17.2v.3"/></svg>',
+  };
+  const DURUM_ADI = { bekliyor: 'Bekliyor', uretiliyor: 'Üretiliyor', bitti: 'Hazır', hata: 'Olmadı' };
+
+  // Küçük bir öğe kurucu: kullanıcı metni her zaman düz yazı olarak eklenir.
+  function h(etiket, ozellikler = {}, ...cocuklar) {
+    const oge = document.createElement(etiket);
+    for (const [ad, deger] of Object.entries(ozellikler)) {
+      if (ad === 'class') oge.className = deger;
+      else if (ad === 'html') oge.innerHTML = deger; // yalnızca yukarıdaki sabit simgeler için
+      else if (ad.startsWith('on')) oge.addEventListener(ad.slice(2), deger);
+      else if (deger !== false && deger != null) oge.setAttribute(ad, deger === true ? '' : deger);
+    }
+    for (const cocuk of cocuklar.flat()) if (cocuk != null && cocuk !== false) oge.append(cocuk);
+    return oge;
+  }
+
+  let bildirimZamani;
+  function bildir(metin, kotu = false) {
+    const kutu = $('#bildirim');
+    kutu.textContent = metin;
+    kutu.className = `bildirim acik${kotu ? ' kotu' : ''}`;
+    clearTimeout(bildirimZamani);
+    bildirimZamani = setTimeout(() => (kutu.className = 'bildirim'), kotu ? 6000 : 2500);
+  }
+
+  async function api(yol, govde) {
+    const yanit = await fetch(yol, govde ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(govde) } : {});
+    const veri = await yanit.json().catch(() => ({}));
+    if (!yanit.ok) throw new Error(veri.hata || 'İstek başarısız oldu.');
+    return veri;
+  }
+
+  // ---------- durum ve çizim
+  let durum = null;
+  let sonCizim = '';
+  let ayarlarDolduruldu = false;
+
+  function isKarti(is) {
+    const onizleme = h('div', { class: `onizleme ${is.durum}` });
+    if (is.dosyalar.length) {
+      onizleme.append(h('a', { href: is.dosyalar[0].adres, target: '_blank', title: 'Tam boyutta aç' }, h('img', { src: is.dosyalar[0].adres, alt: is.ad, loading: 'lazy' })));
+      if (is.dosyalar.length > 1) onizleme.append(h('span', { class: 'ek-sayisi' }, `+${is.dosyalar.length - 1}`));
+    } else {
+      onizleme.append(h('div', { class: 'bos', html: is.durum === 'hata' ? SIMGE.uyari : SIMGE.resim }));
+    }
+    if (is.referanslar.length) {
+      onizleme.append(h('div', { class: 'kucuk-refler', title: 'Referans görseller' }, is.referanslar.slice(0, 3).map((adres) => h('img', { src: adres, alt: '' }))));
+    }
+    return h('article', { class: 'kart is' },
+      onizleme,
+      h('div', { class: 'is-govde' },
+        h('div', { class: 'is-bas' }, h('span', { class: 'is-ad', title: is.ad }, is.ad), h('span', { class: `cip ${is.durum}` }, DURUM_ADI[is.durum] || is.durum)),
+        h('p', { class: 'is-istem', title: is.istem }, is.istem),
+        is.neden ? h('p', { class: 'is-neden' }, is.neden) : null,
+        h('div', { class: 'is-eylem' },
+          is.durum === 'bitti' || is.durum === 'hata'
+            ? h('button', { class: 'simge', type: 'button', title: 'Yeniden üret', 'aria-label': 'Yeniden üret', html: SIMGE.yeniden, onclick: () => eylem('/api/isler/yeniden', { id: is.id }) })
+            : null,
+          h('button', { class: 'simge sil', type: 'button', title: 'Sıradan kaldır', 'aria-label': 'Sıradan kaldır', html: SIMGE.sil, onclick: () => eylem('/api/isler/sil', { id: is.id }) })
+        )
+      )
+    );
+  }
+
+  function ciz() {
+    document.body.classList.toggle('calisiyor', durum.calisiyor);
+    $('#rozet').textContent = durum.calisiyor ? 'Çalışıyor' : 'Boşta';
+
+    const say = (d) => durum.isler.filter((is) => is.durum === d).length;
+    const bekleyen = say('bekliyor') + say('hata') + say('uretiliyor');
+    $('#sayim').textContent = durum.isler.length ? `${bekleyen} bekliyor · ${say('bitti')} hazır` : '';
+
+    const dugme = $('#baslat');
+    dugme.className = `dugme ${durum.calisiyor ? 'dur' : 'ana'}`;
+    dugme.innerHTML = durum.calisiyor ? `${SIMGE.dur} Durdur` : `${SIMGE.oynat} Başlat`;
+    dugme.disabled = !durum.calisiyor && !bekleyen;
+    $('#sonra').disabled = durum.calisiyor;
+
+    const imza = JSON.stringify(durum.isler);
+    if (imza !== sonCizim) {
+      sonCizim = imza;
+      const izgara = $('#izgara');
+      izgara.replaceChildren(
+        ...(durum.isler.length
+          ? durum.isler.map(isKarti)
+          : [h('div', { class: 'bos-sira' }, h('strong', {}, 'Sıra boş'), 'Soldaki kutuya bir istem yazıp sıraya ekle.')])
+      );
+    }
+
+    const gunluk = $('#gunluk');
+    const metin = durum.gunluk.join('\n') || 'Henüz bir şey çalışmadı.';
+    if (gunluk.textContent !== metin) {
+      const dipte = gunluk.scrollTop + gunluk.clientHeight >= gunluk.scrollHeight - 30;
+      gunluk.textContent = metin;
+      if (dipte) gunluk.scrollTop = gunluk.scrollHeight;
+    }
+
+    if (!ayarlarDolduruldu) {
+      ayarlarDolduruldu = true;
+      $('#son-ek').value = durum.ayarlar.sonEk;
+      $('#proje').value = durum.ayarlar.projeKlasoru;
+      $('#cikti-yeri').textContent = `Görseller buraya kaydedilir: ${durum.ayarlar.ciktiKlasoru}`;
+    }
+  }
+
+  let yenilemeZamani;
+  async function yenile() {
+    clearTimeout(yenilemeZamani);
+    try {
+      durum = await api('/api/durum');
+      ciz();
+    } catch {
+      $('#rozet').textContent = 'Bağlantı yok';
+    }
+    yenilemeZamani = setTimeout(yenile, durum && durum.calisiyor ? 1200 : 3500);
+  }
+
+  async function eylem(yol, govde) {
+    try {
+      durum = await api(yol, govde);
+      ciz();
+      return true;
+    } catch (hata) {
+      bildir(hata.message, true);
+      return false;
+    }
+  }
+
+  // ---------- başlat / durdur
+  const sonraSecimi = $('#sonra');
+  try { sonraSecimi.value = localStorage.getItem('sonra') || 'yok'; } catch { /* saklama kapalı olabilir */ }
+  sonraSecimi.addEventListener('change', () => { try { localStorage.setItem('sonra', sonraSecimi.value); } catch { /* önemli değil */ } });
+
+  $('#baslat').addEventListener('click', async () => {
+    if (durum && durum.calisiyor) {
+      await eylem('/api/durdur', {});
+      return;
+    }
+    if (await eylem('/api/baslat', { sonra: sonraSecimi.value || 'yok' })) {
+      $('#gunluk-kutu').open = true;
+      bildir(sonraSecimi.value === 'claude' ? 'Başladı. Bitince Claude Code sohbeti robotun siyah penceresinde açılır.' : 'Başladı.');
+      yenile();
+    }
+  });
+
+  // ---------- ayarlar
+  for (const [secici, alan] of [['#son-ek', 'sonEk'], ['#proje', 'projeKlasoru']]) {
+    $(secici).addEventListener('change', async (olay) => {
+      if (await eylem('/api/ayarlar', { [alan]: olay.target.value })) bildir('Kaydedildi.');
+    });
+  }
+
+  // ---------- referans görseller
+  let refler = []; // { ad, veri (base64), adres (önizleme) }
+  function refleriCiz() {
+    $('#refler').replaceChildren(...refler.map((ref, sira) =>
+      h('div', { class: 'ref' },
+        h('img', { src: ref.adres, alt: ref.ad }),
+        h('button', { type: 'button', title: 'Kaldır', 'aria-label': 'Referansı kaldır', onclick: () => { URL.revokeObjectURL(ref.adres); refler.splice(sira, 1); refleriCiz(); } }, '×')
+      )
+    ));
+  }
+  function dosyayiOku(dosya) {
+    return new Promise((coz, reddet) => {
+      const okuyucu = new FileReader();
+      okuyucu.onload = () => coz(String(okuyucu.result).split(',')[1]);
+      okuyucu.onerror = reddet;
+      okuyucu.readAsDataURL(dosya);
+    });
+  }
+  async function refEkle(dosyalar) {
+    for (const dosya of dosyalar) {
+      if (!dosya.type.startsWith('image/')) continue;
+      if (refler.length >= 8) { bildir('En fazla 8 referans görsel eklenebilir.', true); break; }
+      refler.push({ ad: dosya.name || 'görsel', veri: await dosyayiOku(dosya), adres: URL.createObjectURL(dosya) });
+    }
+    refleriCiz();
+  }
+  $('#ekle-ref').addEventListener('click', () => $('#dosya').click());
+  $('#dosya').addEventListener('change', (olay) => { refEkle([...olay.target.files]); olay.target.value = ''; });
+  document.addEventListener('paste', (olay) => {
+    const dosyalar = [...(olay.clipboardData?.files || [])].filter((d) => d.type.startsWith('image/'));
+    if (dosyalar.length) { olay.preventDefault(); refEkle(dosyalar); }
+  });
+  const yazici = $('#yazici');
+  for (const ad of ['dragenter', 'dragover']) yazici.addEventListener(ad, (olay) => { olay.preventDefault(); yazici.classList.add('birak'); });
+  for (const ad of ['dragleave', 'drop']) yazici.addEventListener(ad, (olay) => { olay.preventDefault(); yazici.classList.remove('birak'); });
+  yazici.addEventListener('drop', (olay) => refEkle([...olay.dataTransfer.files]));
+
+  // ---------- sıraya ekle
+  async function sirayaEkle() {
+    const istem = $('#istem').value.trim();
+    if (!istem) { $('#istem').focus(); bildir('Önce bir istem yaz ya da söyle.', true); return; }
+    if (tanima) tanima.stop();
+    const tamam = await eylem('/api/isler', { ad: $('#ad').value.trim(), istem, referanslar: refler.map(({ ad, veri }) => ({ ad, veri })) });
+    if (!tamam) return;
+    $('#istem').value = '';
+    $('#ad').value = '';
+    refler.forEach((ref) => URL.revokeObjectURL(ref.adres));
+    refler = [];
+    refleriCiz();
+    $('#istem').focus();
+  }
+  $('#siraya-ekle').addEventListener('click', sirayaEkle);
+  $('#istem').addEventListener('keydown', (olay) => { if (olay.key === 'Enter' && (olay.ctrlKey || olay.metaKey)) sirayaEkle(); });
+
+  // ---------- sesle yazma
+  const SesTanima = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const mikrofon = $('#mikrofon');
+  let tanima = null;
+  if (!SesTanima) {
+    mikrofon.disabled = true;
+    mikrofon.title = 'Bu tarayıcı sesle yazmayı desteklemiyor. Chrome ya da Edge kullan.';
+  }
+  mikrofon.addEventListener('click', () => {
+    if (tanima) { tanima.stop(); return; }
+    const kutu = $('#istem');
+    const onceki = kutu.value.trim() ? `${kutu.value.trim()} ` : '';
+    let kesin = '';
+    tanima = new SesTanima();
+    tanima.lang = 'tr-TR';
+    tanima.continuous = true;
+    tanima.interimResults = true;
+    tanima.onresult = (olay) => {
+      let gecici = '';
+      for (let i = olay.resultIndex; i < olay.results.length; i++) {
+        const parca = olay.results[i][0].transcript;
+        if (olay.results[i].isFinal) kesin += `${parca.trim()} `;
+        else gecici += parca;
+      }
+      kutu.value = onceki + kesin + gecici;
+    };
+    tanima.onerror = (olay) => {
+      const neden = { 'not-allowed': 'Mikrofon izni verilmedi.', 'no-speech': 'Ses algılanmadı.', 'audio-capture': 'Mikrofon bulunamadı.', network: 'Ses tanıma için internet bağlantısı gerekiyor.' };
+      if (olay.error !== 'aborted') bildir(neden[olay.error] || `Ses tanıma hatası: ${olay.error}`, true);
+    };
+    tanima.onend = () => {
+      tanima = null;
+      mikrofon.classList.remove('dinliyor');
+      mikrofon.title = 'Sesle yaz';
+      kutu.value = kutu.value.trim();
+    };
+    tanima.start();
+    mikrofon.classList.add('dinliyor');
+    mikrofon.title = 'Dinliyor… durdurmak için tıkla';
+  });
+
+  yenile();
+</script>
+</body>
+</html>

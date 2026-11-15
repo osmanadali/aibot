@@ -2,6 +2,8 @@
 // Gerçek ChatGPT'ye dokunmadan (ve limit harcamadan) robotun akışını sınar.
 //
 // - İstemde "YAZI" geçerse yalnızca yazıyla yanıt verir (başarısızlık yolu).
+// - Dosya eklenirse ekler kullanıcı mesajının üstünde büyük resim olarak görünür
+//   ve yanıt olarak farklı bir görsel (ekliGorsel) döner.
 // - İstemde "ayni-kaynak" geçerse görseli aynı adresten, yoksa başka bir
 //   porttan sunar (gerçek ChatGPT'deki gibi farklı alan adından indirme).
 
@@ -49,6 +51,7 @@ const SAYFA = (gorselKoku) => `<!doctype html>
 <main>
   <div id="mesajlar"></div>
   <div id="prompt-textarea" contenteditable="true" style="border:1px solid #888;min-height:2em"></div>
+  <input type="file" id="dosya" multiple>
   <button data-testid="send-button">Gönder</button>
   <button data-testid="stop-button" style="display:none">Durdur</button>
 </main>
@@ -57,11 +60,25 @@ const SAYFA = (gorselKoku) => `<!doctype html>
   const mesajlar = document.getElementById('mesajlar');
   const gonder = document.querySelector('[data-testid="send-button"]');
   const durdur = document.querySelector('[data-testid="stop-button"]');
+  const dosya = document.getElementById('dosya');
   let sayac = 0;
+  // Dosya seçilince "yükleme" bitene kadar gönder düğmesi kapalı kalır.
+  dosya.onchange = () => { gonder.disabled = true; setTimeout(() => { gonder.disabled = false; }, 800); };
   gonder.onclick = () => {
     const istem = kutu.innerText.trim();
     if (!istem) return;
     kutu.innerText = '';
+    const ekler = [...dosya.files];
+    dosya.value = '';
+    if (ekler.length) {
+      const ekKutusu = document.createElement('div');
+      for (const ek of ekler) {
+        const resim = document.createElement('img');
+        resim.src = URL.createObjectURL(ek);
+        ekKutusu.append(resim);
+      }
+      mesajlar.append(ekKutusu);
+    }
     const kullanici = document.createElement('div');
     kullanici.dataset.messageAuthorRole = 'user';
     kullanici.textContent = istem;
@@ -77,7 +94,7 @@ const SAYFA = (gorselKoku) => `<!doctype html>
         const kok = istem.includes('ayni-kaynak') ? '' : ${JSON.stringify(gorselKoku)};
         const resim = document.createElement('img');
         resim.alt = 'Generated image';
-        resim.src = kok + '/gorsel/' + (++sayac) + '-' + Date.now() + '.png';
+        resim.src = kok + '/gorsel/' + (++sayac) + '-' + Date.now() + '.png' + (ekler.length ? '?ek=' + ekler.length : '');
         asistan.append(resim);
       }
       mesajlar.append(asistan);
@@ -91,11 +108,12 @@ function dinle(sunucu) {
 }
 
 async function sahteChatgptBaslat() {
-  const png = pngUret(512, 512, [70, 160, 90]);
+  const gorsel = pngUret(512, 512, [70, 160, 90]);
+  const ekliGorsel = pngUret(300, 300, [60, 90, 200]);
   const gorselYaniti = (istek, yanit) => {
     if (!istek.url.startsWith('/gorsel/')) return false;
     yanit.writeHead(200, { 'content-type': 'image/png' });
-    yanit.end(png);
+    yanit.end(istek.url.includes('ek=') ? ekliGorsel : gorsel);
     return true;
   };
 
@@ -114,6 +132,8 @@ async function sahteChatgptBaslat() {
 
   return {
     adres: `http://127.0.0.1:${sitePortu}/`,
+    gorsel,
+    ekliGorsel,
     kapat: () => {
       site.close();
       gorselSunucu.close();
@@ -121,4 +141,4 @@ async function sahteChatgptBaslat() {
   };
 }
 
-module.exports = { sahteChatgptBaslat };
+module.exports = { sahteChatgptBaslat, pngUret };

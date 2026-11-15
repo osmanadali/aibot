@@ -21,7 +21,9 @@
       "gonderDugmesi": "[data-testid='send-button']",
       "durdurDugmesi": "[data-testid='stop-button']",
       "asistanMesaji": "[data-message-author-role='assistant']",
-      "girisDugmesi": "[data-testid='login-button']"
+      "girisDugmesi": "[data-testid='login-button']",
+      "kullaniciMesaji": "[data-message-author-role='user']",
+      "dosyaGirdisi": "input[type='file']"
     }
   },
   "gorselUret": {
@@ -40,6 +42,9 @@
     "hedefAltKlasor": "",
     "uzak": "origin",
     "commitMesaji": "Robot: {adet} görsel eklendi"
+  },
+  "arayuz": {
+    "port": 4317
   },
   "akislar": {
     "oyun-gorselleri": [

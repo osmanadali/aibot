@@ -13,5 +13,5 @@ if errorlevel 1 (
   exit /b 1
 )
 echo.
-echo Kurulum tamam. Once deneme.bat ile dene, sonra calistir.bat ile calistir.
+echo Kurulum tamam. Once deneme.bat ile dene, sonra arayuz.bat ile arayuzu ac.
 pause

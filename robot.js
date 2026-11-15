@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Robotun giriş noktası.
 //   node robot.js                 -> görevleri ve akışları listeler
-//   node robot.js <görev|akış>    -> çalıştırır
+//   node robot.js <görev|akış>    -> çalıştırır (birden çok ad verilirse sırayla)
+//   node robot.js arayuz          -> tarayıcıda açılan arayüzü başlatır
 //   node robot.js <ad> --anahtar değer   -> o çalıştırma için seçenek verir
 //
 // Yeni bir yetenek eklemek için gorevler/ klasörüne bir dosya koymak yeterli
@@ -12,15 +13,29 @@ const path = require('path');
 
 const KOK = __dirname;
 
-function gunluk(...parcalar) {
-  const saat = new Date().toLocaleTimeString('tr-TR', { hour12: false });
-  console.log(`[${saat}]`, ...parcalar);
+// Robot arayüzden başlatıldıysa (bir üst süreç varsa) olanları ona da bildirir.
+function bildir(olay, sonra) {
+  if (process.send && process.connected) {
+    try {
+      process.send(olay, sonra);
+      return;
+    } catch {
+      /* üst süreç kapanmış; yalnızca ekrana yazılır */
+    }
+  }
+  if (sonra) sonra();
 }
 
-function ayarlariOku(dosya) {
-  const yol = path.resolve(KOK, dosya || 'ayarlar.json');
+function gunluk(...parcalar) {
+  const saat = new Date().toLocaleTimeString('tr-TR', { hour12: false });
+  const satir = `[${saat}] ${parcalar.join(' ')}`;
+  console.log(satir);
+  bildir({ tur: 'gunluk', satir });
+}
+
+function ayarlariOku(yol) {
   try {
-    return JSON.parse(fs.readFileSync(yol, 'utf8').replace(/^﻿/, ''));
+    return JSON.parse(fs.readFileSync(yol, 'utf8').replace(/^\uFEFF/, ''));
   } catch (hata) {
     throw new Error(`${yol} okunamadı: ${hata.message}`);
   }
@@ -75,26 +90,31 @@ function yardim(gorevler, ayarlar) {
 
 async function ana() {
   const { adlar, secenekler } = secenekleriAyir(process.argv.slice(2));
-  const ayarlar = ayarlariOku(secenekler.ayarlar);
+  const ayarDosyasi = path.resolve(KOK, secenekler.ayarlar || 'ayarlar.json');
+  const ayarlar = ayarlariOku(ayarDosyasi);
   const gorevler = gorevleriYukle();
-  const ad = adlar[0];
 
-  if (!ad) {
+  if (!adlar.length) {
     yardim(gorevler, ayarlar);
     return;
   }
 
-  const adimlar = (ayarlar.akislar && ayarlar.akislar[ad]) || (gorevler[ad] ? [ad] : null);
-  if (!adimlar) {
-    yardim(gorevler, ayarlar);
-    throw new Error(`"${ad}" adında bir görev ya da akış yok.`);
+  // Birden çok ad verilirse sırayla çalışır: node robot.js gorsel-uret git-gonder
+  const adimlar = [];
+  for (const ad of adlar) {
+    if (ayarlar.akislar && ayarlar.akislar[ad]) adimlar.push(...ayarlar.akislar[ad]);
+    else if (gorevler[ad]) adimlar.push(ad);
+    else {
+      yardim(gorevler, ayarlar);
+      throw new Error(`"${ad}" adında bir görev ya da akış yok.`);
+    }
   }
 
   // Adımlar birbirine "veri" üzerinden sonuç aktarır (ör. üretilen görsellerin yolları).
-  const baglam = { kok: KOK, ayarlar, secenekler, veri: {}, gunluk };
+  const baglam = { kok: KOK, ayarlar, ayarDosyasi, secenekler, veri: {}, gunluk, bildir };
   for (const adim of adimlar) {
     const gorev = gorevler[adim];
-    if (!gorev) throw new Error(`"${ad}" akışındaki "${adim}" görevi bulunamadı.`);
+    if (!gorev) throw new Error(`"${adim}" görevi bulunamadı.`);
     gunluk(`▶ ${adim} başladı`);
     await gorev.calistir(baglam);
     gunluk(`✔ ${adim} bitti`);
@@ -102,9 +122,10 @@ async function ana() {
 }
 
 ana().then(
-  () => process.exit(0),
+  () => bildir({ tur: 'bitti', kod: 0 }, () => process.exit(0)),
   (hata) => {
     console.error(`\nHATA: ${hata.message}`);
-    process.exit(1);
+    bildir({ tur: 'gunluk', satir: `HATA: ${hata.message}` });
+    bildir({ tur: 'bitti', kod: 1 }, () => process.exit(1));
   }
 );
