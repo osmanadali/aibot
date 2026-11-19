@@ -173,8 +173,8 @@ async function ana() {
     ayarYaz();
     site.ekSayilari.length = 0;
     sonuc = await robotCalistir(['gorsel-uret', '--ayarlar', ayarDosyasi, '--istemler', yeniIstemler, '--cikti', yeniCikti]);
-    kontrol(!/alan sayfada bulunamadı|eklenemedi/.test(sonuc.stdout + sonuc.stderr), 'sonradan eklenen dosya alanı beklendi');
-    kontrol(site.ekSayilari.includes(1) && site.ekSayilari.includes(3), 'tek referans da üç referans da ChatGPT\'ye ulaştı (çok dosya alan alan seçildi)');
+    kontrol(!/alan sayfada bulunamadı/.test(sonuc.stdout + sonuc.stderr), 'sonradan eklenen dosya alanı beklendi');
+    kontrol(!/eklenemedi/.test(sonuc.stdout + sonuc.stderr) && site.ekSayilari.includes(1) && site.ekSayilari.includes(3), 'tek referans da üç referans da ChatGPT\'ye ulaştı (çok dosya alan alan seçildi)');
     kontrol(['tek-ref', 'cok-ref'].every((ad) => fs.existsSync(path.join(yeniCikti, `${ad}.png`)) && fs.readFileSync(path.join(yeniCikti, `${ad}.png`)).equals(site.ekliGorsel)), 'referanslı iki görsel de kaydedildi');
     kontrol(!fs.readdirSync(yeniCikti).some((ad) => /^(tek|cok)-ref-\d+\.png$/.test(ad)), '"Kullanıcı eki" görselleri çıktı sayılmadı');
     ayarlar.chatgpt.adres = site.adres;
