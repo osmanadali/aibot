@@ -99,6 +99,7 @@ async function ana() {
       istemArasiSaniye: 0,
       denemeSayisi: 1,
       ekBeklemeSaniye: 0,
+      ekGorunmeSaniye: 4,
     },
     gorselUret: { istemDosyasi: path.join(gecici, 'istemler.txt'), ciktiKlasoru: cikti },
     claude: { ...temel.claude, komut: sahteClaudeYaz(gecici, kayit), projeKlasoru: proje, mod: 'sohbet', devamEt: true },
@@ -168,6 +169,7 @@ async function ana() {
     fs.writeFileSync(yeniIstemler, JSON.stringify([
       { ad: 'tek-ref', istem: 'Referanstaki gibi bir kale', referanslar: [refler[0]] },
       { ad: 'cok-ref', istem: 'Referanslardaki karakterleri bir araya getir', referanslar: refler },
+      { ad: 'erisim', istem: 'ERISIM sorunu yaşanan bir istem', referanslar: [refler[1]] },
     ]));
     ayarlar.chatgpt.adres = `${site.adres}yeni?masaustu=1`;
     ayarYaz();
@@ -177,6 +179,13 @@ async function ana() {
     kontrol(!/eklenemedi/.test(sonuc.stdout + sonuc.stderr) && site.ekSayilari.includes(1) && site.ekSayilari.includes(3), 'tek referans da üç referans da ChatGPT\'ye ulaştı (çok dosya alan alan seçildi)');
     kontrol(['tek-ref', 'cok-ref'].every((ad) => fs.existsSync(path.join(yeniCikti, `${ad}.png`)) && fs.readFileSync(path.join(yeniCikti, `${ad}.png`)).equals(site.ekliGorsel)), 'referanslı iki görsel de kaydedildi');
     kontrol(!fs.readdirSync(yeniCikti).some((ad) => /^(tek|cok)-ref-\d+\.png$/.test(ad)), '"Kullanıcı eki" görselleri çıktı sayılmadı');
+    kontrol(!fs.existsSync(path.join(yeniCikti, 'erisim.png')) && /erişemediğini söyledi/.test(sonuc.stdout) && !/yanıtı gönderiliyor/.test(sonuc.stdout), 'ChatGPT referanslara erişemeyince ısrar edilmedi, referanssız görsel kaydedilmedi');
+    // Verilen dosyalar istem kutusunda hiç görünmezse istem referanssız gönderilmemeli.
+    fs.writeFileSync(yeniIstemler, JSON.stringify([{ ad: 'dusen', istem: 'Referanstaki gibi bir kule', referanslar: [refler[0]] }]));
+    ayarlar.chatgpt.adres = `${site.adres}yeni?masaustu=1&ekdusur=1`;
+    ayarYaz();
+    sonuc = await robotCalistir(['gorsel-uret', '--ayarlar', ayarDosyasi, '--istemler', yeniIstemler, '--cikti', yeniCikti]);
+    kontrol(/eklenemedi \(istem kutusunda görünmediler\)/.test(sonuc.stdout) && !fs.existsSync(path.join(yeniCikti, 'dusen.png')) && !/İstem gönderildi/.test(sonuc.stdout), 'referanslar kutuda görünmeyince istem gönderilmedi, iş hatayla bitti');
     ayarlar.chatgpt.adres = site.adres;
     ayarYaz();
 

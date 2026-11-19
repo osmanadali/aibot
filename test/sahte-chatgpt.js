@@ -51,6 +51,7 @@ const SAYFA = (gorselKoku) => `<!doctype html>
 <main>
   <div id="mesajlar"></div>
   <div id="prompt-textarea" contenteditable="true" style="border:1px solid #888;min-height:2em"></div>
+  <div id="onizlemeler"></div>
   <input type="file" id="dosya" multiple>
   <button data-testid="send-button">Gönder</button>
   <button data-testid="stop-button" style="display:none">Durdur</button>
@@ -61,15 +62,21 @@ const SAYFA = (gorselKoku) => `<!doctype html>
   const gonder = document.querySelector('[data-testid="send-button"]');
   const durdur = document.querySelector('[data-testid="stop-button"]');
   const dosya = document.getElementById('dosya');
+  const onizlemeler = document.getElementById('onizlemeler');
   let sayac = 0;
-  // Dosya seçilince "yükleme" bitene kadar gönder düğmesi kapalı kalır.
-  dosya.onchange = () => { gonder.disabled = true; setTimeout(() => { gonder.disabled = false; }, 800); };
+  // Dosya seçilince istem kutusunun yanında önizlemesi belirir; "yükleme" bitene kadar gönder düğmesi kapalı kalır.
+  dosya.onchange = () => {
+    onizlemeler.replaceChildren(...[...dosya.files].map((f) => { const r = document.createElement('img'); r.src = URL.createObjectURL(f); r.width = 40; return r; }));
+    gonder.disabled = true;
+    setTimeout(() => { gonder.disabled = false; }, 800);
+  };
   gonder.onclick = () => {
     const istem = kutu.innerText.trim();
     if (!istem) return;
     kutu.innerText = '';
     const ekler = [...dosya.files];
     dosya.value = '';
+    onizlemeler.replaceChildren();
     if (ekler.length) {
       const ekKutusu = document.createElement('div');
       for (const ek of ekler) {
@@ -105,16 +112,19 @@ const SAYFA = (gorselKoku) => `<!doctype html>
 
 // ChatGPT'nin yeni arayüzüne benzeyen sayfa: işaretli (data-testid) öğe yok, istem kutusu
 // bir textarea, Enter yalnızca satır atlar, gönder düğmesi yazı girilince belirir. Dosya
-// alanları istem kutusundan 3 saniye sonra eklenir. İlk açılışta 8 saniye "Oturum aç"
-// düğmesi görünür.
+// alanları istem kutusundan 3 saniye sonra eklenir; seçilen dosyaların önizlemesi ve "Dosyayı
+// kaldır" düğmesi istem kutusunun yanında belirir. İlk açılışta 8 saniye "Oturum aç" düğmesi görünür.
 //
 // - Adreste "masaustu" yoksa telefon arayüzündeki üç alan vardır (kamera, fotoğraflar,
 //   dosyalar); yalnızca fotoğraf alanına verilen dosyalar ek sayılır ve ekler kullanıcı
 //   mesajının ALTINDA hemen görünür.
-// - "masaustu" varsa masaüstü arayüzündeki dört alan vardır: adları anlamsız, ilki tek dosya
-//   alır. Dosyalar hangi alana verilirse verilsin ek sayılır. Ekler kullanıcı mesajının içinde
-//   "Kullanıcı eki" adıyla ve gönderimden 1 saniye sonra belirir (gerçek arayüz sohbet adresine
-//   geçince mesajı yeniden çizer); kullanıcı mesajında hiçbir işaret yoktur.
+// - "masaustu" varsa masaüstü arayüzündeki dört alan vardır: adları anlamsız, ilki kamera
+//   (capture) ve tek dosya alır. Gerçek arayüzdeki gibi alanlar önce geçici bir kabukta belirir ve
+//   oraya verilen dosyalar yok sayılır; 3 saniye sonra istem kutusu bir form içinde yeniden çizilir
+//   (yazı korunur, kutu yeni bir öğedir) ve işleyen alanlar gelir. Dosyalar hangi işleyen alana
+//   verilirse verilsin ek sayılır. Ekler kullanıcı mesajının içinde "Kullanıcı eki" adıyla ve
+//   gönderimden 1 saniye sonra belirir (gerçek arayüz sohbet adresine geçince mesajı yeniden
+//   çizer); kullanıcı mesajında hiçbir işaret yoktur.
 const YENI_SAYFA = (gorselKoku) => `<!doctype html>
 <meta charset="utf-8">
 <title>Sahte ChatGPT (yeni)</title>
@@ -132,16 +142,21 @@ const YENI_SAYFA = (gorselKoku) => `<!doctype html>
   // Giriş yalnızca ilk açılışta "yapılır"; sonraki sayfa yüklemelerinde oturum açıktır.
   if (localStorage.getItem('girdi')) document.getElementById('giris').remove();
   else setTimeout(() => { localStorage.setItem('girdi', '1'); document.getElementById('giris').remove(); }, 8000);
-  const kutu = document.getElementById('mobile-composer-prompt');
+  let kutu = document.getElementById('mobile-composer-prompt');
+  let cubuk = document.querySelector('.cubuk');
   const mesajlar = document.getElementById('mesajlar');
   const yolla = document.getElementById('yolla');
   const sesli = document.getElementById('sesli');
   const kes = document.getElementById('kes');
   const masaustu = location.search.includes('masaustu');
+  // Adreste "ekdusur" varsa verilen dosyalar sessizce düşer (gerçekte görülen hata).
+  const ekDusur = location.search.includes('ekdusur');
+  const onizlemeler = document.createElement('div');
+  cubuk.prepend(onizlemeler);
   // "yanlis" işaretli alana verilen dosyalar ek sayılmaz.
   const ALANLAR = masaustu
     ? [
-        { id: '_r_s_', accept: 'image/*' },
+        { id: '_r_s_', accept: 'image/*', capture: true },
         { id: '_r_u_', accept: 'image/*,video/*', multiple: true },
         { id: '_r_t_', accept: 'image/*', multiple: true },
         { id: '_r_r_', multiple: true },
@@ -154,6 +169,7 @@ const YENI_SAYFA = (gorselKoku) => `<!doctype html>
   const dosyaAlanlari = [];
   let yukleniyor = false;
   let reddedildi = false;
+  let erisimDendi = false;
   let sayac = 0;
   const dugmeleriAyarla = () => {
     const yazili = kutu.value.trim().length > 0;
@@ -162,7 +178,23 @@ const YENI_SAYFA = (gorselKoku) => `<!doctype html>
     yolla.disabled = yukleniyor;
   };
   kutu.addEventListener('input', dugmeleriAyarla);
-  setTimeout(() => {
+  const ekDosyalari = () => dosyaAlanlari.filter((d) => !d.yanlis).flatMap((d) => [...d.alan.files]);
+  const onizlemeleriCiz = () => onizlemeler.replaceChildren(...ekDosyalari().map((f) => {
+    const parca = document.createElement('span');
+    const resim = document.createElement('img');
+    resim.src = URL.createObjectURL(f);
+    resim.width = 40;
+    const kaldir = document.createElement('button');
+    kaldir.type = 'button';
+    kaldir.setAttribute('aria-label', 'Dosyayı kaldır');
+    kaldir.textContent = 'x';
+    parca.append(resim, kaldir);
+    return parca;
+  }));
+  // "kabuk" alanlarına verilen dosyalar hiçbir yere gitmez.
+  const alanlariKur = (kabuk) => {
+    for (const d of dosyaAlanlari) d.alan.remove();
+    dosyaAlanlari.length = 0;
     for (const a of ALANLAR) {
       const alan = document.createElement('input');
       alan.type = 'file';
@@ -171,20 +203,45 @@ const YENI_SAYFA = (gorselKoku) => `<!doctype html>
       if (a.accept) alan.accept = a.accept;
       if (a.multiple) alan.multiple = true;
       if (a.capture) alan.setAttribute('capture', '');
-      alan.addEventListener('change', () => {
-        // Yanlış alana dosya verilirse belli olsun.
-        if (a.yanlis) { document.title = 'YANLIS ALAN: ' + a.yanlis; return; }
-        yukleniyor = true; dugmeleriAyarla(); setTimeout(() => { yukleniyor = false; dugmeleriAyarla(); }, 900);
-      });
+      if (!kabuk) {
+        alan.addEventListener('change', () => {
+          // Yanlış alana dosya verilirse belli olsun.
+          if (a.yanlis) { document.title = 'YANLIS ALAN: ' + a.yanlis; return; }
+          onizlemeleriCiz();
+          yukleniyor = true; dugmeleriAyarla(); setTimeout(() => { yukleniyor = false; dugmeleriAyarla(); }, 900);
+        });
+      }
       kutu.before(alan);
-      dosyaAlanlari.push({ alan, yanlis: a.yanlis });
+      dosyaAlanlari.push({ alan, yanlis: kabuk ? 'kabuk' : a.yanlis });
     }
-  }, 3000);
+  };
+  setTimeout(() => alanlariKur(masaustu), 3000);
+  if (masaustu) {
+    setTimeout(() => {
+      const form = document.createElement('form');
+      form.className = 'cubuk';
+      form.addEventListener('submit', (olay) => olay.preventDefault());
+      const yeniKutu = document.createElement('textarea');
+      yeniKutu.id = kutu.id;
+      yeniKutu.name = kutu.name;
+      yeniKutu.placeholder = kutu.placeholder;
+      yeniKutu.value = kutu.value;
+      yeniKutu.addEventListener('input', dugmeleriAyarla);
+      kutu.replaceWith(yeniKutu);
+      kutu = yeniKutu;
+      form.append(...cubuk.childNodes);
+      cubuk.replaceWith(form);
+      cubuk = form;
+      alanlariKur(ekDusur);
+      onizlemeleriCiz();
+    }, 6000);
+  }
   yolla.onclick = () => {
     const istem = kutu.value.trim();
     if (!istem || yukleniyor) return;
-    const ekler = dosyaAlanlari.filter((d) => !d.yanlis).flatMap((d) => [...d.alan.files]);
+    const ekler = ekDosyalari();
     for (const d of dosyaAlanlari) d.alan.value = '';
+    onizlemeler.replaceChildren();
     kutu.value = '';
     dugmeleriAyarla();
     const kullanici = document.createElement('div');
@@ -212,6 +269,11 @@ const YENI_SAYFA = (gorselKoku) => `<!doctype html>
       if (istem.includes('YAZI')) reddedildi = true;
       if (reddedildi) asistan.textContent = 'Bu görseli üretemiyorum.';
       else if (istem.includes('SORU')) asistan.textContent = 'İstersen hemen Paket 1 ile başlayayım.';
+      // Gerçekte görülen durum: araç eklere erişemez; ısrar edilirse referanssız bir görsel üretir.
+      else if (istem.includes('ERISIM') && !erisimDendi) {
+        erisimDendi = true;
+        asistan.textContent = 'Görseli üretmeyi denedim ancak görsel oluşturma aracı referans görsellerine erişemedi. Önceki tasarımlardan birini yeniden yükle.';
+      }
       else {
         const resim = document.createElement('img');
         resim.src = ${JSON.stringify(gorselKoku)} + '/gorsel/yeni-' + (++sayac) + '-' + Date.now() + '.png' + (ekler.length ? '?ek=' + ekler.length : '');
