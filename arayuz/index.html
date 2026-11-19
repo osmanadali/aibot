@@ -306,6 +306,31 @@
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
   .is-neden { margin: 0; font-size: 12.5px; color: var(--hata); }
+  .is-revize {
+    margin: 0; padding: 6px 9px; border-radius: 9px; font-size: 12.5px; line-height: 1.4;
+    color: var(--vurgu-koyu); background: color-mix(in srgb, var(--vurgu) 9%, transparent);
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .is-revize b { font: 700 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; margin-right: 4px; }
+
+  /* ---------- revize penceresi */
+  dialog.revize {
+    width: min(460px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--cizgi); border-radius: 18px;
+    background: var(--panel); color: var(--murekkep); box-shadow: var(--golge-buyuk);
+  }
+  dialog.revize::backdrop { background: rgba(10, 8, 20, .45); }
+  .revize-ic { padding: 20px; display: grid; gap: 14px; }
+  .revize-ust { display: flex; gap: 14px; align-items: center; min-width: 0; }
+  .revize-ust img { width: 84px; height: 84px; object-fit: cover; border-radius: 12px; border: 1px solid var(--cizgi); flex: none; background: var(--panel-2); }
+  .revize-ust strong { display: block; font: 600 14px/1.3 var(--mono); overflow-wrap: anywhere; }
+  .revize-ust span { font-size: 13px; color: var(--soluk); }
+  dialog.revize textarea {
+    width: 100%; min-height: 110px; resize: vertical; padding: 12px 14px; border-radius: 12px;
+    border: 1.5px solid var(--cizgi); background: var(--panel-2); outline: none; font-size: 15px; line-height: 1.5;
+  }
+  dialog.revize textarea:focus { border-color: var(--vurgu); background: var(--panel); box-shadow: 0 0 0 4px color-mix(in srgb, var(--vurgu) 16%, transparent); }
+  .revize-alt { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+  .revize-alt .ipucu { margin: 0 auto 0 0; padding: 0; }
   .cip {
     display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px;
     font: 600 11.5px/1.7 var(--yazi); white-space: nowrap;
@@ -487,6 +512,23 @@
 
 <footer class="alt" id="surum"></footer>
 <div class="bildirim" id="bildirim" role="status"></div>
+<dialog class="revize" id="revize-pencere" aria-labelledby="revize-baslik">
+  <form class="revize-ic" method="dialog" id="revize-form">
+    <div class="revize-ust">
+      <img id="revize-resim" alt="">
+      <div><strong id="revize-baslik"></strong><span>Görsel bu notla düzenlenip aynı adla yeniden üretilir.</span></div>
+    </div>
+    <label class="alan">
+      <span class="etiket">Ne değişsin?</span>
+      <textarea id="revize-not" placeholder="ör. Kuyruğu daha uzun olsun, gözleri mavi parlasın"></textarea>
+    </label>
+    <div class="revize-alt">
+      <span class="ipucu"><kbd>Ctrl</kbd> <kbd>Enter</kbd></span>
+      <button class="dugme sade" type="button" id="revize-vazgec">Vazgeç</button>
+      <button class="dugme vurgulu" type="submit">Revizeyi sıraya ekle</button>
+    </div>
+  </form>
+</dialog>
 <template id="maskot"><svg class="maskot" viewBox="0 0 256 256" aria-hidden="true">
   <defs>
     <linearGradient id="zemin2" x1="0" y1="0" x2="1" y2="1">
@@ -509,6 +551,7 @@
     dur: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
     yeniden: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 6.3M20 4v7h-7"/></svg>',
     sil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+    revize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg>',
     resim: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m4 17 5-5 4 4 3-3 4 4"/></svg>',
     uyari: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2.8 19.5h18.4L12 4zM12 10v4.5M12 17.2v.3"/></svg>',
   };
@@ -562,16 +605,22 @@
     } else {
       onizleme.append(h('div', { class: 'bos', html: is.durum === 'hata' ? SIMGE.uyari : SIMGE.resim }));
     }
-    if (is.referanslar.length) {
-      onizleme.append(h('div', { class: 'kucuk-refler', title: 'Referans görseller' }, is.referanslar.slice(0, 3).map((adres) => h('img', { src: adres, alt: '' }))));
+    // Revize edilen işte ChatGPT'ye referans olarak önceki görsel gider.
+    const kucukler = is.revize ? [is.revize.onceki] : is.referanslar;
+    if (kucukler.length) {
+      onizleme.append(h('div', { class: 'kucuk-refler', title: is.revize ? 'Düzenlenecek görsel' : 'Referans görseller' }, kucukler.slice(0, 3).map((adres) => h('img', { src: adres, alt: '' }))));
     }
     return h('article', { class: `kart is ${is.durum}` },
       onizleme,
       h('div', { class: 'is-govde' },
         h('div', { class: 'is-bas' }, h('span', { class: 'is-ad', title: is.ad }, is.ad), h('span', { class: `cip ${is.durum}` }, DURUM_ADI[is.durum] || is.durum)),
         h('p', { class: 'is-istem', title: is.istem }, is.istem),
+        is.revize ? h('p', { class: 'is-revize', title: is.revize.not }, h('b', {}, `Revize ${is.revize.sayi}`), is.revize.not) : null,
         is.neden ? h('p', { class: 'is-neden' }, is.neden) : null,
         h('div', { class: 'is-eylem' },
+          is.durum === 'bitti'
+            ? h('button', { class: 'simge', type: 'button', title: 'Revize notu ekle', 'aria-label': 'Revize notu ekle', html: SIMGE.revize, onclick: () => revizeAc(is) })
+            : null,
           is.durum === 'bitti' || is.durum === 'hata'
             ? h('button', { class: 'simge', type: 'button', title: 'Yeniden üret', 'aria-label': 'Yeniden üret', html: SIMGE.yeniden, onclick: () => eylem('/api/isler/yeniden', { id: is.id }) })
             : null,
@@ -715,6 +764,28 @@
       if (await eylem('/api/ayarlar', { projeKlasoru: yanit.klasor })) bildir('Kaydedildi.');
     }
   });
+
+  // ---------- revize: bitmiş görseli bir notla yeniden ürettirme
+  let revizeIsi = null;
+  function revizeAc(is) {
+    revizeIsi = is;
+    $('#revize-resim').src = is.dosyalar[0].adres;
+    $('#revize-baslik').textContent = is.ad;
+    $('#revize-not').value = '';
+    $('#revize-pencere').showModal();
+    $('#revize-not').focus();
+  }
+  async function revizeGonder() {
+    const not = $('#revize-not').value.trim();
+    if (!not) { $('#revize-not').focus(); bildir('Önce neyin değişeceğini yaz.', true); return; }
+    if (await eylem('/api/isler/revize', { id: revizeIsi.id, not })) {
+      $('#revize-pencere').close();
+      bildir(durum.calisiyor ? 'Revize sıraya eklendi; robot şu anki işleri bitirince yeniden Başlat\'a bas.' : 'Revize sıraya eklendi. Başlat\'a basınca üretilir.');
+    }
+  }
+  $('#revize-form').addEventListener('submit', (olay) => { olay.preventDefault(); revizeGonder(); });
+  $('#revize-vazgec').addEventListener('click', () => $('#revize-pencere').close());
+  $('#revize-not').addEventListener('keydown', (olay) => { if (olay.key === 'Enter' && (olay.ctrlKey || olay.metaKey)) { olay.preventDefault(); revizeGonder(); } });
 
   // ---------- referans görseller
   let refler = []; // { ad, veri (base64), adres (önizleme) }

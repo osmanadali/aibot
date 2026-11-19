@@ -328,6 +328,25 @@ async function ana() {
       kontrol(sonucBayt.equals(site.ekliGorsel), 'referans ChatGPT\'ye eklendi ve dönen görsel arayüzden açılabiliyor');
       kontrol(yanit.veri.gunluk.some((satir) => satir.includes('kaydedildi')), 'günlük arayüze aktarıldı');
 
+      // Revize: bitmiş görsel, notla birlikte düzenlenecek görsel olarak gider; iş aynı adla yeniden üretilir.
+      const ilkDosya = is.dosyalar[0].ad;
+      yanit = await istek('/api/isler/revize', { id: is.id, not: 'Kuyruğu daha uzun olsun' });
+      is = yanit.veri.isler[0];
+      kontrol(yanit.kod === 200 && is.durum === 'bekliyor' && is.revize.sayi === 1 && !fs.existsSync(path.join(cikti, ilkDosya)), 'revize notu eklendi, iş yeniden sıraya girdi');
+      const revizeOncesi = Buffer.from(await fetch(taban + is.revize.onceki).then((y) => y.arrayBuffer()));
+      kontrol(revizeOncesi.equals(site.ekliGorsel), 'revize öncesi görsel saklandı');
+      kontrol((await istek('/api/isler/revize', { id: is.id, not: 'bir daha' })).kod === 400 && (await istek('/api/isler/revize', { id: is.id, not: '  ' })).kod === 400, 'üretilmemiş görsel ve boş not reddedildi');
+      site.ekSayilari.length = 0;
+      yanit = await istek('/api/baslat', { sonra: 'yok' });
+      for (let i = 0; i < 120 && yanit.veri.calisiyor; i++) {
+        await new Promise((coz) => setTimeout(coz, 500));
+        yanit = await istek('/api/durum');
+      }
+      is = yanit.veri.isler[0];
+      const giden = JSON.parse(fs.readFileSync(path.join(gecici, 'veri', 'calisan-isler.json'), 'utf8'))[0];
+      kontrol(is.durum === 'bitti' && is.dosyalar.length === 1 && is.dosyalar[0].ad === ilkDosya, 'revize aynı dosya adıyla üretildi');
+      kontrol(giden.istem.includes('Kuyruğu daha uzun olsun.') && giden.referanslar.length === 1 && /-revize-1\.png$/.test(giden.referanslar[0]) && site.ekSayilari.includes(1), 'ChatGPT\'ye revize notu ve düzenlenecek görsel gitti');
+
       yanit = await istek('/api/isler/toplu', { metin: '1. Menü\nmenu_bg.png — Arka plan\nlogo.png — Logo' });
       kontrol(yanit.kod === 200 && yanit.veri.eklenen === 2 && yanit.veri.isler.slice(-2).map((i) => i.ad).join(' ') === 'menu_bg logo', 'yapıştırılan liste arayüzden iki ayrı iş olarak eklendi');
       for (const eklenen of yanit.veri.isler.slice(-2)) await istek('/api/isler/sil', { id: eklenen.id });
@@ -335,7 +354,7 @@ async function ana() {
       yanit = await istek('/api/isler/yeniden', { id: is.id });
       kontrol(yanit.veri.isler[0].durum === 'bekliyor' && !fs.existsSync(path.join(cikti, is.dosyalar[0].ad)), '"yeniden üret" görseli silip işi sıraya geri aldı');
       yanit = await istek('/api/isler/sil', { id: is.id });
-      kontrol(yanit.veri.isler.length === 0, 'iş sıradan kaldırıldı');
+      kontrol(yanit.veri.isler.length === 0 && fs.readdirSync(path.join(gecici, 'veri', 'referanslar')).length === 0, 'iş sıradan kaldırıldı, referansları ve revize öncesi görseli silindi');
     } finally {
       arayuz.kill();
     }
