@@ -64,6 +64,23 @@
     "oyun-gorselleri-github": [
       "gorsel-uret",
       "git-gonder"
+    ],
+    "tripo-modelleri-github": [
+      "tripo-uret",
+      "git-gonder"
     ]
+  },
+  "tripo": {
+    "adres": "https://studio.tripo3d.ai/tr/workspace/generate",
+    "model": "H3.1",
+    "dokuKalitesi": "detailed",
+    "ultraAg": true,
+    "pbr": true,
+    "esZamanli": 3,
+    "rigKredi": 20,
+    "uretimBeklemeDakika": 12,
+    "rigBeklemeDakika": 6,
+    "zipParcaMB": 45,
+    "ciktiKlasoru": "cikti/modeller"
   }
 }

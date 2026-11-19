@@ -9,6 +9,7 @@ bilgisayarında çalışır. Bir arayüzü ve üç yeteneği var:
 | `claude-gonder` | Görselleri oyun projenin klasörüne kopyalar ve o klasörde bir Claude Code sohbetine iletir. |
 | `arayuz` | Tarayıcıda açılan arayüzü başlatır: istem yaz ya da söyle, referans görsel ekle, sırayı başlat. |
 | `git-gonder` | Görselleri oyun projenin klasörüne kopyalar, commit'ler ve GitHub'a gönderir. |
+| `tripo-uret` | Konsept görsellerden Tripo Studio'da 3D model üretir, iskelet ekler, GLB'leri indirip zip'ler. |
 
 İki hazır akış var: `oyun-gorselleri` görselleri üretip bilgisayarındaki Claude Code
 sohbetine iletir; `oyun-gorselleri-github` görselleri üretip GitHub'a gönderir.
@@ -149,6 +150,35 @@ robot bitenleri atlar. Üst üste iki istem başarısız olursa (genellikle Chat
 görsel limiti dolmuştur) robot durur; daha sonra tekrar çalıştırman yeterli.
 Bir görseli baştan ürettirmek için dosyasını sil ya da `--yeniden` ekle.
 Başarısız her istem için `cikti/hata-<ad>.png` ekran görüntüsü kaydedilir.
+
+## Tripo ile 3D model
+
+Robotun tarayıcısında bir kez [Tripo Studio](https://studio.tripo3d.ai)'ya giriş yap; krediler
+o hesaptan düşer. Ardından:
+
+```bash
+node robot.js tripo-uret git-gonder --liste modeller.json
+```
+
+`modeller.json`:
+
+```json
+{
+  "hedef": { "depo": "https://github.com/kullanici/oyun", "dal": "dal-adi", "klasor": "modeller", "mesaj": "Modeller (Tripo)" },
+  "zip": "modeller.zip",
+  "modeller": [
+    { "ad": "kirpi", "gorsel": "C:/.../kirpi.png", "iskelet": "quadruped", "poligon": 25000 },
+    { "ad": "sutun", "gorsel": "C:/.../sutun.png", "iskelet": "yok", "poligon": 6000 }
+  ]
+}
+```
+
+- `iskelet`: `biped` (İnsansı, Mixamo), `quadruped` (Diğer) ya da `yok`.
+- Kalite ayarları `ayarlar.json > tripo` altında: model (`H3.1`), doku (`detailed` = 4K), Ultra ağ, PBR.
+  Kredi yetmeyen model atlanır; kalite düşürülmez. Aynı anda `esZamanli` kadar model üretilir.
+- İnen GLB'ler `cikti/modeller/` altına, zip'ler ~45 MB'lık parçalar hâlinde (`modeller-1.zip`, ...)
+  yazılır; `git-gonder` onları `hedef`'te yazan depoya/dala/klasöre gönderir.
+- Daha önce indirilmiş bir modeli yalnızca zip'e eklemek için `{ "ad": "x", "glb": "C:/.../x.glb" }`.
 
 ## Ayarlar
 

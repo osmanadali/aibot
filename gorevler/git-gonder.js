@@ -117,6 +117,8 @@ function grubuGonder(baglam, kaynaklar, hedef) {
     hazir = depoyuHazirla(baglam, ayardakiDepo, ayar.dal, hedef && hedef.dal);
   } else if (secenekler.proje || ayar.projeKlasoru || claude.projeKlasoru) {
     hazir = { klasor: projeKlasorunuBul(baglam, ayar.projeKlasoru, claude.projeKlasoru), altKlasor: '' };
+    // Açık dal uzaktakinin gerisindeyse gönderim reddedilmesin; yalnızca ileri sarılabiliyorsa güncellenir.
+    if (git(hazir.klasor, ['pull', '--ff-only']).kod !== 0) gunluk('Proje dalı güncellenemedi (yerel değişiklik ya da ayrışma olabilir); olduğu gibi devam ediliyor.');
   } else {
     throw new Error('GitHub deposu belirtilmemiş. Ayarlar bölümünde "GitHub deposu" alanını doldur ya da istemde depo adresini yaz.');
   }
