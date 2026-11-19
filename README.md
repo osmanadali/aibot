@@ -189,7 +189,8 @@ dosyaya kaydeder. Örnek:
 ChatGPT arayüzünü sık değiştirir. Robot bu yüzden sayfadaki öğeleri sabit adlarla
 değil, ne olduklarına bakarak bulur: istem kutusu görünen en büyük yazı alanıdır,
 gönder ve durdur düğmeleri etiketlerinden tanınır, üretilen görsel gönderimden
-sonra sayfada beliren yeni ve büyük resimdir.
+sonra sayfada beliren yeni ve büyük resimdir. Eklediğin referans görseller
+("Kullanıcı eki" adlı resimler) çıktı sayılmaz.
 
 Yine de bir şey bulunamazsa robot günlüğe "Tanı:" ile başlayan bir satır yazar;
 bu satır sayfada gördüğü alanları ve düğmeleri listeler. O satır, neyin

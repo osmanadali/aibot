@@ -2,7 +2,8 @@
 // dener. Gerçek hesaplara dokunmaz.   Çalıştırma:  npm test   (ya da deneme.bat)
 //
 // Sınadıkları: tarayıcıyı açıp bağlanma, istemi yazıp gönderme, görseli bekleyip
-// indirme (aynı ve farklı kaynaktan), yazılı yanıtta hata verme, kaldığı yerden
+// indirme (aynı ve farklı kaynaktan), referansları sonradan eklenen ve tek/çok dosya
+// alan birden çok dosya alanından doğrusuna yükleme, yazılı yanıtta hata verme, kaldığı yerden
 // devam etme, görselleri projeye kopyalayıp Claude Code'a iletme, görselleri
 // commit'leyip uzak depoya gönderme, arayüzden referans görselli iş çalıştırma,
 // yeni sürümü indirip kurma, uygulama penceresiyle açılıp kapanma.
@@ -157,6 +158,25 @@ async function ana() {
     ayarYaz();
     sonuc = await robotCalistir(['gorsel-uret', '--ayarlar', ayarDosyasi, '--istemler', yeniIstemler, '--cikti', yeniCikti]);
     kontrol(/yanıtı gönderiliyor/.test(sonuc.stdout) && fs.existsSync(path.join(yeniCikti, 'menu_bg.png')), 'ChatGPT soru sorunca robot yanıt verdi, görsel dosya adı korunarak kaydedildi');
+    // Masaüstü arayüzü: dört anlamsız adlı dosya alanı (ilki tek dosya alır) sayfadan sonra
+    // eklenir; ekler "Kullanıcı eki" adıyla ve işaretsiz kullanıcı mesajında, gecikmeli belirir.
+    const refler = [1, 2, 3].map((i) => {
+      const dosya = path.join(gecici, `referans-${i}.png`);
+      fs.writeFileSync(dosya, pngUret(400, 400, [200, 60 * i, 60]));
+      return dosya;
+    });
+    fs.writeFileSync(yeniIstemler, JSON.stringify([
+      { ad: 'tek-ref', istem: 'Referanstaki gibi bir kale', referanslar: [refler[0]] },
+      { ad: 'cok-ref', istem: 'Referanslardaki karakterleri bir araya getir', referanslar: refler },
+    ]));
+    ayarlar.chatgpt.adres = `${site.adres}yeni?masaustu=1`;
+    ayarYaz();
+    site.ekSayilari.length = 0;
+    sonuc = await robotCalistir(['gorsel-uret', '--ayarlar', ayarDosyasi, '--istemler', yeniIstemler, '--cikti', yeniCikti]);
+    kontrol(!/alan sayfada bulunamadı|eklenemedi/.test(sonuc.stdout + sonuc.stderr), 'sonradan eklenen dosya alanı beklendi');
+    kontrol(site.ekSayilari.includes(1) && site.ekSayilari.includes(3), 'tek referans da üç referans da ChatGPT\'ye ulaştı (çok dosya alan alan seçildi)');
+    kontrol(['tek-ref', 'cok-ref'].every((ad) => fs.existsSync(path.join(yeniCikti, `${ad}.png`)) && fs.readFileSync(path.join(yeniCikti, `${ad}.png`)).equals(site.ekliGorsel)), 'referanslı iki görsel de kaydedildi');
+    kontrol(!fs.readdirSync(yeniCikti).some((ad) => /^(tek|cok)-ref-\d+\.png$/.test(ad)), '"Kullanıcı eki" görselleri çıktı sayılmadı');
     ayarlar.chatgpt.adres = site.adres;
     ayarYaz();
 

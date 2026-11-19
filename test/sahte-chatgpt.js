@@ -104,8 +104,17 @@ const SAYFA = (gorselKoku) => `<!doctype html>
 </script>`;
 
 // ChatGPT'nin yeni arayüzüne benzeyen sayfa: işaretli (data-testid) öğe yok, istem kutusu
-// bir textarea, Enter yalnızca satır atlar, gönder düğmesi yazı girilince belirir, ekler
-// kullanıcı mesajının ALTINDA görünür. İlk açılışta 8 saniye "Oturum aç" düğmesi görünür.
+// bir textarea, Enter yalnızca satır atlar, gönder düğmesi yazı girilince belirir. Dosya
+// alanları istem kutusundan 3 saniye sonra eklenir. İlk açılışta 8 saniye "Oturum aç"
+// düğmesi görünür.
+//
+// - Adreste "masaustu" yoksa telefon arayüzündeki üç alan vardır (kamera, fotoğraflar,
+//   dosyalar); yalnızca fotoğraf alanına verilen dosyalar ek sayılır ve ekler kullanıcı
+//   mesajının ALTINDA hemen görünür.
+// - "masaustu" varsa masaüstü arayüzündeki dört alan vardır: adları anlamsız, ilki tek dosya
+//   alır. Dosyalar hangi alana verilirse verilsin ek sayılır. Ekler kullanıcı mesajının içinde
+//   "Kullanıcı eki" adıyla ve gönderimden 1 saniye sonra belirir (gerçek arayüz sohbet adresine
+//   geçince mesajı yeniden çizer); kullanıcı mesajında hiçbir işaret yoktur.
 const YENI_SAYFA = (gorselKoku) => `<!doctype html>
 <meta charset="utf-8">
 <title>Sahte ChatGPT (yeni)</title>
@@ -113,9 +122,6 @@ const YENI_SAYFA = (gorselKoku) => `<!doctype html>
 <div id="mesajlar"></div>
 <div class="cubuk">
   <button aria-label="Dosya ekle">+</button>
-  <input type="file" id="octane-mobile-composer-camera-input" accept="image/*" capture hidden>
-  <input type="file" id="octane-mobile-composer-photos-input" accept="image/*" multiple hidden>
-  <input type="file" id="octane-mobile-composer-files-input" multiple hidden>
   <textarea id="mobile-composer-prompt" name="prompt" placeholder="ChatGPT'ye sor"></textarea>
   <button aria-label="Dikte">mik</button>
   <button id="sesli" aria-label="Sesli modu kullan">ses</button>
@@ -131,7 +137,21 @@ const YENI_SAYFA = (gorselKoku) => `<!doctype html>
   const yolla = document.getElementById('yolla');
   const sesli = document.getElementById('sesli');
   const kes = document.getElementById('kes');
-  const fotograflar = document.getElementById('octane-mobile-composer-photos-input');
+  const masaustu = location.search.includes('masaustu');
+  // "yanlis" işaretli alana verilen dosyalar ek sayılmaz.
+  const ALANLAR = masaustu
+    ? [
+        { id: '_r_s_', accept: 'image/*' },
+        { id: '_r_u_', accept: 'image/*,video/*', multiple: true },
+        { id: '_r_t_', accept: 'image/*', multiple: true },
+        { id: '_r_r_', multiple: true },
+      ]
+    : [
+        { id: 'octane-mobile-composer-camera-input', accept: 'image/*', capture: true, yanlis: 'camera' },
+        { id: 'octane-mobile-composer-photos-input', accept: 'image/*', multiple: true },
+        { id: 'octane-mobile-composer-files-input', multiple: true, yanlis: 'files' },
+      ];
+  const dosyaAlanlari = [];
   let yukleniyor = false;
   let reddedildi = false;
   let sayac = 0;
@@ -142,22 +162,45 @@ const YENI_SAYFA = (gorselKoku) => `<!doctype html>
     yolla.disabled = yukleniyor;
   };
   kutu.addEventListener('input', dugmeleriAyarla);
-  fotograflar.addEventListener('change', () => { yukleniyor = true; dugmeleriAyarla(); setTimeout(() => { yukleniyor = false; dugmeleriAyarla(); }, 900); });
-  // Yanlış alana dosya verilirse belli olsun.
-  for (const ad of ['camera', 'files']) document.getElementById('octane-mobile-composer-' + ad + '-input').addEventListener('change', () => { document.title = 'YANLIS ALAN: ' + ad; });
+  setTimeout(() => {
+    for (const a of ALANLAR) {
+      const alan = document.createElement('input');
+      alan.type = 'file';
+      alan.id = a.id;
+      alan.hidden = true;
+      if (a.accept) alan.accept = a.accept;
+      if (a.multiple) alan.multiple = true;
+      if (a.capture) alan.setAttribute('capture', '');
+      alan.addEventListener('change', () => {
+        // Yanlış alana dosya verilirse belli olsun.
+        if (a.yanlis) { document.title = 'YANLIS ALAN: ' + a.yanlis; return; }
+        yukleniyor = true; dugmeleriAyarla(); setTimeout(() => { yukleniyor = false; dugmeleriAyarla(); }, 900);
+      });
+      kutu.before(alan);
+      dosyaAlanlari.push({ alan, yanlis: a.yanlis });
+    }
+  }, 3000);
   yolla.onclick = () => {
     const istem = kutu.value.trim();
     if (!istem || yukleniyor) return;
-    const ekler = [...fotograflar.files];
-    fotograflar.value = '';
+    const ekler = dosyaAlanlari.filter((d) => !d.yanlis).flatMap((d) => [...d.alan.files]);
+    for (const d of dosyaAlanlari) d.alan.value = '';
     kutu.value = '';
     dugmeleriAyarla();
     const kullanici = document.createElement('div');
     kullanici.textContent = istem;
     mesajlar.append(kullanici);
-    if (ekler.length) {
+    const ekResmi = (ek) => {
+      const resim = document.createElement('img');
+      resim.src = URL.createObjectURL(ek);
+      if (masaustu) resim.alt = 'Kullanıcı eki';
+      return resim;
+    };
+    if (ekler.length && masaustu) {
+      setTimeout(() => kullanici.prepend(...ekler.map(ekResmi)), 1000);
+    } else if (ekler.length) {
       const ekKutusu = document.createElement('div');
-      for (const ek of ekler) { const resim = document.createElement('img'); resim.src = URL.createObjectURL(ek); ekKutusu.append(resim); }
+      ekKutusu.append(...ekler.map(ekResmi));
       mesajlar.append(ekKutusu);
     }
     // Adreste "durdurmasiz" varsa üretim sırasında "durdur" düğmesi hiç görünmez.
@@ -194,8 +237,11 @@ function dinle(sunucu) {
 async function sahteChatgptBaslat() {
   const gorsel = pngUret(512, 512, [70, 160, 90]);
   const ekliGorsel = pngUret(300, 300, [60, 90, 200]);
+  const ekSayilari = []; // referanslı istemlere dönen görseller indirilirken: kaç referans gelmişti
   const gorselYaniti = (istek, yanit) => {
     if (!istek.url.startsWith('/gorsel/')) return false;
+    const ek = /[?&]ek=(\d+)/.exec(istek.url);
+    if (ek) ekSayilari.push(Number(ek[1]));
     yanit.writeHead(200, { 'content-type': 'image/png' });
     yanit.end(istek.url.includes('ek=') ? ekliGorsel : gorsel);
     return true;
@@ -218,6 +264,7 @@ async function sahteChatgptBaslat() {
     adres: `http://127.0.0.1:${sitePortu}/`,
     gorsel,
     ekliGorsel,
+    ekSayilari,
     kapat: () => {
       site.close();
       gorselSunucu.close();
