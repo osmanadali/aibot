@@ -66,7 +66,7 @@ function dalVeKlasorAyir(yol, dallar) {
 
 // Depoyu robotun veri klasörüne indirir (zaten inmişse günceller) ve istenen dala geçer.
 // Sonuç: { klasor: deponun bilgisayardaki yeri, altKlasor: adresten okunan hedef klasör }
-function depoyuHazirla(baglam, { adres, yol }, istenenDal) {
+function depoyuHazirla(baglam, { adres, yol }, istenenDal, zorunluDal) {
   const { gunluk } = baglam;
   const depolar = path.join(veriKlasoru(baglam), 'depolar');
   const ad = dosyaAdinaCevir(adres.replace(/\.git$/, '').split(/[\\/:]/).filter(Boolean).pop() || 'depo');
@@ -87,7 +87,8 @@ function depoyuHazirla(baglam, { adres, yol }, istenenDal) {
     ({ dal, klasor: altKlasor } = dalVeKlasorAyir(yol, dallar));
     if (!dal) throw new Error(`Adresteki dal depoda bulunamadı: ${yol}. Dal silinmiş ya da adı değişmiş olabilir; adresi güncelle.`);
   }
-  if (dal) gitZorunlu(klasor, ['checkout', dal], undefined, `"${dal}" dalına geçilemedi.`);
+  if (zorunluDal) dal = zorunluDal;
+  if (dal) gitZorunlu(klasor, ['checkout', dal], undefined, `"${dal}" dalına geçilemedi. Dal depoda var mı?`);
   git(klasor, ['pull', '--ff-only']);
 
   // Git'te ad ve e-posta tanımlı değilse commit oluşturulamaz.
@@ -98,28 +99,40 @@ function depoyuHazirla(baglam, { adres, yol }, istenenDal) {
   return { klasor, altKlasor };
 }
 
-async function calistir(baglam) {
+// Bir grup görseli tek bir hedefe (depo, dal, klasör) commit'leyip gönderir.
+// hedef null ise ayarlardaki adres kullanılır; doluysa işin metninde yazan hedef önce gelir.
+function grubuGonder(baglam, kaynaklar, hedef) {
   const { ayarlar, secenekler, gunluk } = baglam;
   const ayar = ayarlar.git || {};
   const claude = ayarlar.claude || {};
-  const depo = !secenekler.proje && !ayar.projeKlasoru && ayar.depoAdresi ? depoAdresiniAyir(ayar.depoAdresi) : null;
-  if (!depo && !secenekler.proje && !ayar.projeKlasoru && !claude.projeKlasoru) {
-    throw new Error('GitHub deposu belirtilmemiş. Ayarlar bölümünde "GitHub deposu" alanını doldur.');
-  }
-  const kaynaklar = gonderilecekGorseller(baglam);
-  if (!kaynaklar.length) {
-    gunluk('Gönderilecek yeni görsel yok; GitHub adımı atlandı.');
-    return;
+  const ayardakiDepo = !secenekler.proje && !ayar.projeKlasoru && ayar.depoAdresi ? depoAdresiniAyir(ayar.depoAdresi) : null;
+
+  let hazir;
+  if (hedef && hedef.depo) {
+    // Metinde depo yazıyor: o depo; dal metinden, yoksa adresteki /tree/ yolundan, o da yoksa ana dal.
+    const depo = depoAdresiniAyir(hedef.depo);
+    hazir = depoyuHazirla(baglam, { adres: depo.adres, yol: hedef.dal ? '' : hedef.agacYolu || '' }, '', hedef.dal);
+  } else if (ayardakiDepo) {
+    // Metinde depo yok: ayardaki depo; metinde dal yazıyorsa o dal.
+    hazir = depoyuHazirla(baglam, ayardakiDepo, ayar.dal, hedef && hedef.dal);
+  } else if (secenekler.proje || ayar.projeKlasoru || claude.projeKlasoru) {
+    hazir = { klasor: projeKlasorunuBul(baglam, ayar.projeKlasoru, claude.projeKlasoru), altKlasor: '' };
+  } else {
+    throw new Error('GitHub deposu belirtilmemiş. Ayarlar bölümünde "GitHub deposu" alanını doldur ya da istemde depo adresini yaz.');
   }
 
-  const hazir = depo ? depoyuHazirla(baglam, depo, ayar.dal) : { klasor: projeKlasorunuBul(baglam, ayar.projeKlasoru, claude.projeKlasoru), altKlasor: '' };
   const proje = hazir.klasor;
   if (git(proje, ['rev-parse', '--is-inside-work-tree']).kod !== 0) {
     throw new Error(`${proje} bir git deposu değil.`);
   }
-  // Adres bir klasörü gösteriyorsa görseller oraya, yoksa ayarlardaki klasöre konur.
-  const altKlasor = hazir.altKlasor || ayar.hedefAltKlasor || claude.hedefAltKlasor;
-  if (!altKlasor) throw new Error('Görsellerin depoda nereye konacağı belli değil. ayarlar.yerel.json > git.hedefAltKlasor alanını doldur.');
+  const acikDal = gitZorunlu(proje, ['symbolic-ref', '--short', 'HEAD'], undefined, 'Projede açık bir dal yok. Bir dala geçip tekrar çalıştır.');
+  // Yerel proje klasöründe dal değiştirilmez; istemdeki dal açık daldan farklıysa yanlış dala gitmesin diye durulur.
+  if (hedef && hedef.dal && acikDal !== hedef.dal) {
+    throw new Error(`İstemde "${hedef.dal}" dalı yazıyor ama ${proje} şu an "${acikDal}" dalında. Yanlış dala gitmesin diye gönderilmedi.`);
+  }
+  // Klasör: istemde yazan, yoksa adresteki, yoksa ayardaki.
+  const altKlasor = (hedef && hedef.klasor) || hazir.altKlasor || ayar.hedefAltKlasor || claude.hedefAltKlasor;
+  if (!altKlasor) throw new Error('Görsellerin depoda nereye konacağı belli değil. ayarlar.yerel.json > git.hedefAltKlasor alanını doldur ya da istemde yolu yaz.');
 
   const yollar = projeyeKopyala(kaynaklar, proje, altKlasor);
   // Yollar git'e standart girdiden, NUL ile ayrılmış verilir: adet ve özel karakter sınırı olmaz.
@@ -132,25 +145,48 @@ async function calistir(baglam) {
   const degisenler = yollar.filter((yol) => hazirlananlar.includes(yol));
 
   if (degisenler.length) {
-    const mesaj = (secenekler.mesaj || ayar.commitMesaji || 'Robot: {adet} görsel eklendi').replace('{adet}', degisenler.length);
+    const mesaj = ((hedef && hedef.mesaj) || secenekler.mesaj || ayar.commitMesaji || 'Robot: {adet} görsel eklendi').replace('{adet}', degisenler.length);
     gitZorunlu(proje, ['commit', '-m', mesaj, ...yolSecimi], yolGirdisi, 'Commit oluşturulamadı.');
     gunluk(`${degisenler.length} görsel commit'lendi: "${mesaj}"`);
   } else {
     gunluk('Görseller depoda zaten güncel; yeni commit gerekmedi.');
   }
 
-  const dal = gitZorunlu(proje, ['symbolic-ref', '--short', 'HEAD'], undefined, 'Projede açık bir dal yok. Bir dala geçip tekrar çalıştır.');
   const uzak = ayar.uzak || 'origin';
-  gunluk(`${uzak}/${dal} dalına gönderiliyor…`);
+  gunluk(`${uzak}/${acikDal} dalına gönderiliyor…`);
   gitZorunlu(
     proje,
-    ['push', uzak, `HEAD:refs/heads/${dal}`],
+    ['push', uzak, `HEAD:refs/heads/${acikDal}`],
     undefined,
     `GitHub'a gönderilemedi. Commit bilgisayarında duruyor; sorunu giderip "node robot.js git-gonder" ile tekrar dene.`
   );
+  gunluk(`Gönderildi: ${acikDal} dalında ${altKlasor}/ altında ${yollar.length} görsel.`);
+  return yollar;
+}
 
-  baglam.veri.gonderilenYollar = yollar;
-  gunluk(`Gönderildi: ${dal} dalında ${altKlasor}/ altında ${yollar.length} görsel.`);
+async function calistir(baglam) {
+  const { gunluk } = baglam;
+  const kaynaklar = gonderilecekGorseller(baglam);
+  if (!kaynaklar.length) {
+    gunluk('Gönderilecek yeni görsel yok; GitHub adımı atlandı.');
+    return;
+  }
+
+  // Görseller hedeflerine göre gruplanır: metninde depo/dal/klasör yazanlar oraya,
+  // yazmayanlar ayarlardaki GitHub adresine gider.
+  const hedefler = baglam.veri.hedefler || {};
+  const gruplar = new Map();
+  for (const kaynak of kaynaklar) {
+    const h = hedefler[kaynak];
+    const hedef = h && (h.depo || h.dal || h.klasor || h.agacYolu) ? h : null;
+    const anahtar = hedef ? JSON.stringify([hedef.depo, hedef.agacYolu, hedef.dal, hedef.klasor, hedef.mesaj]) : '';
+    if (!gruplar.has(anahtar)) gruplar.set(anahtar, { hedef, kaynaklar: [] });
+    gruplar.get(anahtar).kaynaklar.push(kaynak);
+  }
+
+  const gonderilenler = [];
+  for (const { hedef, kaynaklar: grup } of gruplar.values()) gonderilenler.push(...grubuGonder(baglam, grup, hedef));
+  baglam.veri.gonderilenYollar = gonderilenler;
 }
 
 module.exports = {

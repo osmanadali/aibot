@@ -14,19 +14,19 @@ function istemleriOku(dosya) {
   if (!fs.existsSync(dosya)) throw new Error(`İstem dosyası bulunamadı: ${dosya}`);
   const istemler = [];
   const kullanilan = new Set();
-  const ekle = (ad, istem, referanslar) => {
+  const ekle = (ad, istem, referanslar, hedef) => {
     // Aynı ad iki kez geçerse dosyalar birbirinin üstüne yazılmasın.
     let benzersiz = ad;
     for (let n = 2; kullanilan.has(benzersiz); n++) benzersiz = `${ad}-${n}`;
     kullanilan.add(benzersiz);
-    istemler.push({ ad: benzersiz, istem, referanslar });
+    istemler.push({ ad: benzersiz, istem, referanslar, hedef: hedef || null });
   };
 
   // Arayüzün yazdığı liste: [{ ad, istem, referanslar: [dosya yolları] }]
   if (dosya.toLowerCase().endsWith('.json')) {
     for (const is of JSON.parse(fs.readFileSync(dosya, 'utf8'))) {
       const istem = String(is.istem || '').replace(/\s+/g, ' ').trim();
-      if (istem) ekle(guvenliAd(is.ad || istem), istem, is.referanslar || []);
+      if (istem) ekle(guvenliAd(is.ad || istem), istem, is.referanslar || [], is.hedef);
     }
     return istemler;
   }
@@ -66,6 +66,7 @@ async function calistir(baglam) {
   gunluk(`${istemler.length} istem okundu: ${istemDosyasi}`);
 
   const uretilenler = [];
+  const hedefler = {};
   const basarisizlar = [];
   let ustUsteHata = 0;
   let oturum = null;
@@ -73,7 +74,7 @@ async function calistir(baglam) {
 
   try {
     for (let i = 0; i < istemler.length; i++) {
-      const { ad, istem, referanslar } = istemler[i];
+      const { ad, istem, referanslar, hedef } = istemler[i];
       const etiket = `[${i + 1}/${istemler.length}] ${ad}`;
       const anahtar = `${ad}|${istem}`;
 
@@ -133,6 +134,8 @@ async function calistir(baglam) {
       durum[anahtar] = dosyalar;
       fs.writeFileSync(durumDosyasi, JSON.stringify(durum, null, 2));
       uretilenler.push(...dosyalar.map((dosya) => path.join(cikti, dosya)));
+      // GitHub adımı her görseli, işin metninde yazan hedefe gönderir.
+      if (hedef) for (const dosya of dosyalar) hedefler[path.join(cikti, dosya)] = hedef;
       gunluk(`${etiket}: kaydedildi -> ${dosyalar.join(', ')}`);
       bildir({ tur: 'istem', ad, durum: 'bitti' });
     }
@@ -143,6 +146,7 @@ async function calistir(baglam) {
   }
 
   baglam.veri.gorseller = uretilenler;
+  baglam.veri.hedefler = hedefler;
   gunluk(`Özet: ${uretilenler.length} yeni görsel, ${basarisizlar.length} başarısız istem. Klasör: ${cikti}`);
   for (const { ad, neden } of basarisizlar) gunluk(`  ✗ ${ad}: ${neden}`);
   if (basarisizlar.length && !uretilenler.length) throw new Error('Hiç görsel üretilemedi.');
