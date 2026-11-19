@@ -44,6 +44,11 @@ yeniden ekler.
 - **Bitince:** Görselleri Claude Code sohbetine ya da GitHub'a göndermeyi
   seçebilirsin. Claude Code sohbeti ayrı bir komut penceresinde açılır.
 - Beğenmediğin görselde ↻ düğmesi görseli silip işi yeniden sıraya alır.
+- Küçük bir değişiklik istiyorsan kalem düğmesiyle **revize notu** yaz (ör. "kuyruğu
+  daha uzun olsun"). Görsel bu notla birlikte ChatGPT'ye düzenlenmek üzere gönderilir ve
+  aynı dosya adıyla yeniden üretilir; kartta küçük resim olarak önceki hâli görünür.
+- Bir referanslı işte ChatGPT referanslara erişemediğini söylerse robot ısrar etmez
+  (ısrar referanssız bir görsel ürettirir); iş "olmadı" olur ve sonra yeniden denenir.
 - **Ayarlar** bölümünden ortak stili ve oyun projesi klasörünü değiştirebilirsin.
 - Robot açılmazsa küçük bir uyarı çıkar; ayrıntı `veri\uygulama.log` dosyasındadır.
 
@@ -189,7 +194,8 @@ dosyaya kaydeder. Örnek:
 ChatGPT arayüzünü sık değiştirir. Robot bu yüzden sayfadaki öğeleri sabit adlarla
 değil, ne olduklarına bakarak bulur: istem kutusu görünen en büyük yazı alanıdır,
 gönder ve durdur düğmeleri etiketlerinden tanınır, üretilen görsel gönderimden
-sonra sayfada beliren yeni ve büyük resimdir.
+sonra sayfada beliren yeni ve büyük resimdir. Eklediğin referans görseller
+("Kullanıcı eki" adlı resimler) çıktı sayılmaz.
 
 Yine de bir şey bulunamazsa robot günlüğe "Tanı:" ile başlayan bir satır yazar;
 bu satır sayfada gördüğü alanları ve düğmeleri listeler. O satır, neyin

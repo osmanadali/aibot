@@ -2,7 +2,8 @@
 // dener. Gerçek hesaplara dokunmaz.   Çalıştırma:  npm test   (ya da deneme.bat)
 //
 // Sınadıkları: tarayıcıyı açıp bağlanma, istemi yazıp gönderme, görseli bekleyip
-// indirme (aynı ve farklı kaynaktan), yazılı yanıtta hata verme, kaldığı yerden
+// indirme (aynı ve farklı kaynaktan), referansları sonradan eklenen ve tek/çok dosya
+// alan birden çok dosya alanından doğrusuna yükleme, yazılı yanıtta hata verme, kaldığı yerden
 // devam etme, görselleri projeye kopyalayıp Claude Code'a iletme, görselleri
 // commit'leyip uzak depoya gönderme, arayüzden referans görselli iş çalıştırma,
 // yeni sürümü indirip kurma, uygulama penceresiyle açılıp kapanma.
@@ -98,6 +99,7 @@ async function ana() {
       istemArasiSaniye: 0,
       denemeSayisi: 1,
       ekBeklemeSaniye: 0,
+      ekGorunmeSaniye: 4,
     },
     gorselUret: { istemDosyasi: path.join(gecici, 'istemler.txt'), ciktiKlasoru: cikti },
     claude: { ...temel.claude, komut: sahteClaudeYaz(gecici, kayit), projeKlasoru: proje, mod: 'sohbet', devamEt: true },
@@ -157,6 +159,33 @@ async function ana() {
     ayarYaz();
     sonuc = await robotCalistir(['gorsel-uret', '--ayarlar', ayarDosyasi, '--istemler', yeniIstemler, '--cikti', yeniCikti]);
     kontrol(/yanıtı gönderiliyor/.test(sonuc.stdout) && fs.existsSync(path.join(yeniCikti, 'menu_bg.png')), 'ChatGPT soru sorunca robot yanıt verdi, görsel dosya adı korunarak kaydedildi');
+    // Masaüstü arayüzü: dört anlamsız adlı dosya alanı (ilki tek dosya alır) sayfadan sonra
+    // eklenir; ekler "Kullanıcı eki" adıyla ve işaretsiz kullanıcı mesajında, gecikmeli belirir.
+    const refler = [1, 2, 3].map((i) => {
+      const dosya = path.join(gecici, `referans-${i}.png`);
+      fs.writeFileSync(dosya, pngUret(400, 400, [200, 60 * i, 60]));
+      return dosya;
+    });
+    fs.writeFileSync(yeniIstemler, JSON.stringify([
+      { ad: 'tek-ref', istem: 'Referanstaki gibi bir kale', referanslar: [refler[0]] },
+      { ad: 'cok-ref', istem: 'Referanslardaki karakterleri bir araya getir', referanslar: refler },
+      { ad: 'erisim', istem: 'ERISIM sorunu yaşanan bir istem', referanslar: [refler[1]] },
+    ]));
+    ayarlar.chatgpt.adres = `${site.adres}yeni?masaustu=1`;
+    ayarYaz();
+    site.ekSayilari.length = 0;
+    sonuc = await robotCalistir(['gorsel-uret', '--ayarlar', ayarDosyasi, '--istemler', yeniIstemler, '--cikti', yeniCikti]);
+    kontrol(!/alan sayfada bulunamadı/.test(sonuc.stdout + sonuc.stderr), 'sonradan eklenen dosya alanı beklendi');
+    kontrol(!/eklenemedi/.test(sonuc.stdout + sonuc.stderr) && site.ekSayilari.includes(1) && site.ekSayilari.includes(3), 'tek referans da üç referans da ChatGPT\'ye ulaştı (çok dosya alan alan seçildi)');
+    kontrol(['tek-ref', 'cok-ref'].every((ad) => fs.existsSync(path.join(yeniCikti, `${ad}.png`)) && fs.readFileSync(path.join(yeniCikti, `${ad}.png`)).equals(site.ekliGorsel)), 'referanslı iki görsel de kaydedildi');
+    kontrol(!fs.readdirSync(yeniCikti).some((ad) => /^(tek|cok)-ref-\d+\.png$/.test(ad)), '"Kullanıcı eki" görselleri çıktı sayılmadı');
+    kontrol(!fs.existsSync(path.join(yeniCikti, 'erisim.png')) && /erişemediğini söyledi/.test(sonuc.stdout) && !/yanıtı gönderiliyor/.test(sonuc.stdout), 'ChatGPT referanslara erişemeyince ısrar edilmedi, referanssız görsel kaydedilmedi');
+    // Verilen dosyalar istem kutusunda hiç görünmezse istem referanssız gönderilmemeli.
+    fs.writeFileSync(yeniIstemler, JSON.stringify([{ ad: 'dusen', istem: 'Referanstaki gibi bir kule', referanslar: [refler[0]] }]));
+    ayarlar.chatgpt.adres = `${site.adres}yeni?masaustu=1&ekdusur=1`;
+    ayarYaz();
+    sonuc = await robotCalistir(['gorsel-uret', '--ayarlar', ayarDosyasi, '--istemler', yeniIstemler, '--cikti', yeniCikti]);
+    kontrol(/eklenemedi \(istem kutusunda görünmediler\)/.test(sonuc.stdout) && !fs.existsSync(path.join(yeniCikti, 'dusen.png')) && !/İstem gönderildi/.test(sonuc.stdout), 'referanslar kutuda görünmeyince istem gönderilmedi, iş hatayla bitti');
     ayarlar.chatgpt.adres = site.adres;
     ayarYaz();
 
@@ -299,6 +328,25 @@ async function ana() {
       kontrol(sonucBayt.equals(site.ekliGorsel), 'referans ChatGPT\'ye eklendi ve dönen görsel arayüzden açılabiliyor');
       kontrol(yanit.veri.gunluk.some((satir) => satir.includes('kaydedildi')), 'günlük arayüze aktarıldı');
 
+      // Revize: bitmiş görsel, notla birlikte düzenlenecek görsel olarak gider; iş aynı adla yeniden üretilir.
+      const ilkDosya = is.dosyalar[0].ad;
+      yanit = await istek('/api/isler/revize', { id: is.id, not: 'Kuyruğu daha uzun olsun' });
+      is = yanit.veri.isler[0];
+      kontrol(yanit.kod === 200 && is.durum === 'bekliyor' && is.revize.sayi === 1 && !fs.existsSync(path.join(cikti, ilkDosya)), 'revize notu eklendi, iş yeniden sıraya girdi');
+      const revizeOncesi = Buffer.from(await fetch(taban + is.revize.onceki).then((y) => y.arrayBuffer()));
+      kontrol(revizeOncesi.equals(site.ekliGorsel), 'revize öncesi görsel saklandı');
+      kontrol((await istek('/api/isler/revize', { id: is.id, not: 'bir daha' })).kod === 400 && (await istek('/api/isler/revize', { id: is.id, not: '  ' })).kod === 400, 'üretilmemiş görsel ve boş not reddedildi');
+      site.ekSayilari.length = 0;
+      yanit = await istek('/api/baslat', { sonra: 'yok' });
+      for (let i = 0; i < 120 && yanit.veri.calisiyor; i++) {
+        await new Promise((coz) => setTimeout(coz, 500));
+        yanit = await istek('/api/durum');
+      }
+      is = yanit.veri.isler[0];
+      const giden = JSON.parse(fs.readFileSync(path.join(gecici, 'veri', 'calisan-isler.json'), 'utf8'))[0];
+      kontrol(is.durum === 'bitti' && is.dosyalar.length === 1 && is.dosyalar[0].ad === ilkDosya, 'revize aynı dosya adıyla üretildi');
+      kontrol(giden.istem.includes('Kuyruğu daha uzun olsun.') && giden.referanslar.length === 1 && /-revize-1\.png$/.test(giden.referanslar[0]) && site.ekSayilari.includes(1), 'ChatGPT\'ye revize notu ve düzenlenecek görsel gitti');
+
       yanit = await istek('/api/isler/toplu', { metin: '1. Menü\nmenu_bg.png — Arka plan\nlogo.png — Logo' });
       kontrol(yanit.kod === 200 && yanit.veri.eklenen === 2 && yanit.veri.isler.slice(-2).map((i) => i.ad).join(' ') === 'menu_bg logo', 'yapıştırılan liste arayüzden iki ayrı iş olarak eklendi');
       for (const eklenen of yanit.veri.isler.slice(-2)) await istek('/api/isler/sil', { id: eklenen.id });
@@ -306,7 +354,7 @@ async function ana() {
       yanit = await istek('/api/isler/yeniden', { id: is.id });
       kontrol(yanit.veri.isler[0].durum === 'bekliyor' && !fs.existsSync(path.join(cikti, is.dosyalar[0].ad)), '"yeniden üret" görseli silip işi sıraya geri aldı');
       yanit = await istek('/api/isler/sil', { id: is.id });
-      kontrol(yanit.veri.isler.length === 0, 'iş sıradan kaldırıldı');
+      kontrol(yanit.veri.isler.length === 0 && fs.readdirSync(path.join(gecici, 'veri', 'referanslar')).length === 0, 'iş sıradan kaldırıldı, referansları ve revize öncesi görseli silindi');
     } finally {
       arayuz.kill();
     }

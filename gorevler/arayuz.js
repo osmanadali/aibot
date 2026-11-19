@@ -79,7 +79,13 @@ async function calistir(baglam) {
     if (gunlukSatirlari.length > 400) gunlukSatirlari.splice(0, gunlukSatirlari.length - 400);
   };
 
-  const anahtar = (is) => `${is.ad}|${is.istem}`;
+  // Revize edilen işte ChatGPT'ye önceki görsel ve revize notu gider; iş bu istemle kaydedilir.
+  const uretimIstemi = (is) =>
+    is.revize
+      ? `Ekteki görseli düzenle. Yapılacak değişiklik: ${is.revize.not} Bunun dışında her şeyi (çizim stili, renkler, ışık, kompozisyon, arka plan, oran) aynen koru. Görselin özgün istemi: ${is.istem}`
+      : is.istem;
+  const uretimReferanslari = (is) => (is.revize ? [is.revize.referans] : is.referanslar);
+  const anahtar = (is) => `${is.ad}|${uretimIstemi(is)}`;
   const bitenDosyalar = (is, durum, cikti) => (durum[anahtar(is)] || []).filter((d) => fs.existsSync(path.join(cikti, d)));
 
   function durumOzeti() {
@@ -94,6 +100,7 @@ async function calistir(baglam) {
         ad: is.ad,
         istem: is.istem,
         referanslar: is.referanslar.map((d) => `/referans/${encodeURIComponent(d)}`),
+        revize: is.revize ? { not: is.revize.not, sayi: is.revize.sayi, onceki: `/referans/${encodeURIComponent(is.revize.referans)}` } : null,
         durum: dosyalar.length ? 'bitti' : anlik.durum === 'uretiliyor' && !surec ? 'bekliyor' : anlik.durum || 'bekliyor',
         neden: dosyalar.length ? '' : anlik.neden || '',
         dosyalar: dosyalar.map((d) => ({
@@ -187,7 +194,7 @@ async function calistir(baglam) {
       const isler = isleriOku();
       const is = isler.find((i) => i.id === govde.id);
       if (!is) return;
-      for (const dosya of is.referanslar) fs.rmSync(path.join(refKlasoru, path.basename(dosya)), { force: true });
+      for (const dosya of [...is.referanslar, ...(is.revize ? is.revize.gecmis : [])]) fs.rmSync(path.join(refKlasoru, path.basename(dosya)), { force: true });
       delete canli[is.ad];
       isleriYaz(isler.filter((i) => i !== is));
     },
@@ -202,6 +209,30 @@ async function calistir(baglam) {
       for (const dosya of durum[anahtar(is)] || []) fs.rmSync(path.join(cikti, path.basename(dosya)), { force: true });
       delete durum[anahtar(is)];
       if (fs.existsSync(cikti)) fs.writeFileSync(durumDosyasi(), JSON.stringify(durum, null, 2));
+      delete canli[is.ad];
+    },
+
+    // Bitmiş görseli bir notla yeniden ürettirir: görsel ChatGPT'ye düzenlenecek görsel olarak
+    // gider, iş aynı adla yeniden "bekliyor" olur. Önceki görsel referans klasöründe saklanır.
+    '/api/isler/revize': (govde) => {
+      const not = String(govde.not || '').replace(/\s+/g, ' ').trim();
+      if (!not) throw new IstekHatasi(400, 'Revize notu boş olamaz.');
+      const isler = isleriOku();
+      const is = isler.find((i) => i.id === govde.id);
+      if (!is) throw new IstekHatasi(404, 'İş bulunamadı.');
+      const cikti = ciktiKlasoru();
+      const durum = jsonOku(durumDosyasi(), {});
+      const dosyalar = bitenDosyalar(is, durum, cikti);
+      if (!dosyalar.length) throw new IstekHatasi(400, 'Revize için önce görselin üretilmiş olması gerekir.');
+      const kaynak = path.join(cikti, path.basename(dosyalar[0]));
+      const sayi = (is.revize ? is.revize.sayi : 0) + 1;
+      const referans = `${is.id}-revize-${sayi}${path.extname(kaynak).toLowerCase()}`;
+      fs.copyFileSync(kaynak, path.join(refKlasoru, referans));
+      for (const dosya of dosyalar) fs.rmSync(path.join(cikti, path.basename(dosya)), { force: true });
+      delete durum[anahtar(is)];
+      fs.writeFileSync(durumDosyasi(), JSON.stringify(durum, null, 2));
+      is.revize = { not: /[.!?]$/.test(not) ? not : `${not}.`, referans, sayi, gecmis: [...(is.revize ? is.revize.gecmis : []), referans] };
+      isleriYaz(isler);
       delete canli[is.ad];
     },
 
@@ -245,7 +276,7 @@ async function calistir(baglam) {
       canli = {};
       fs.writeFileSync(
         calisanDosya,
-        JSON.stringify(bekleyenler.map((is) => ({ ad: is.ad, istem: is.istem, referanslar: is.referanslar.map((d) => path.join(refKlasoru, d)) })))
+        JSON.stringify(bekleyenler.map((is) => ({ ad: is.ad, istem: uretimIstemi(is), referanslar: uretimReferanslari(is).map((d) => path.join(refKlasoru, d)) })))
       );
       gunlugeYaz(`—— ${bekleyenler.length} iş başlatıldı ——`);
       const argumanlar = ['gorsel-uret', ...SONRAKI_ADIM[sonra], '--ayarlar', ayarDosyasi, '--istemler', calisanDosya, '--veri', veriKlasoru];
