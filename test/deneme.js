@@ -437,7 +437,8 @@ async function ana() {
     const PENCERE_PORTU = 9342;
     ayarlar.arayuz = { port: UYGULAMA_PORTU, pencereArgumanlari: [...(process.env.ROBOT_GORUNUR ? [] : ['--headless=new', ...(linux ? ['--no-sandbox'] : [])]), `--remote-debugging-port=${PENCERE_PORTU}`] };
     ayarYaz();
-    const uygArg = ['--guncellemeden', '--ayarlar', ayarDosyasi, '--veri', path.join(gecici, 'veri-uygulama')];
+    // --kisayolsuz: deneme, kullanıcının masaüstündeki Robot kısayolunu bu klasöre çevirmesin.
+    const uygArg = ['--guncellemeden', '--kisayolsuz', '--ayarlar', ayarDosyasi, '--veri', path.join(gecici, 'veri-uygulama')];
     const uygulama = spawn(process.execPath, [path.join(KOK, 'robot.js'), 'uygulama', ...uygArg], { stdio: 'ignore' });
     const kapandi = new Promise((coz) => uygulama.on('exit', coz));
     try {
