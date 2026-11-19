@@ -189,6 +189,22 @@ async function ana() {
     ayarlar.chatgpt.adres = site.adres;
     ayarYaz();
 
+    console.log('1d) İstemdeki hedefi (depo, dal, klasör, commit mesajı) okuma');
+    const { hedefiBul } = require('../lib/hedef');
+    const tam = hedefiBul(
+      'github.com/kisi/oyun deposunun `claude/epic-x` dalını çek. Görselleri kut/gelen_gorsel/kahraman_<kimlik>_a.png olarak kaydet. Commit mesajı: "Oyun: konseptler". Aynı dala push et.',
+      'kahraman_yarasa_a'
+    );
+    kontrol(
+      tam && tam.depo === 'https://github.com/kisi/oyun' && tam.dal === 'claude/epic-x' && tam.klasor === 'kut/gelen_gorsel' && tam.mesaj === 'Oyun: konseptler',
+      'depo, dal, klasör ve commit mesajı metinden okundu'
+    );
+    const agac = hedefiBul('https://github.com/kisi/evcil/tree/ozellik/a-b/gorseller', 'x');
+    kontrol(agac && agac.depo === 'https://github.com/kisi/evcil' && agac.agacYolu === 'ozellik/a-b/gorseller' && !agac.dal, '/tree/ adresindeki dal ve klasör yolu saklandı');
+    kontrol(hedefiBul('menu_bg.png — ana dala gönder, aynı dala da', 'menu_bg') === null, '"ana dal", "aynı dal" gibi sözler dal sayılmadı');
+    const iki = hedefiBul('kut/ui/dugme.png ve kut/arka/bg.png olarak kaydet', 'dugme');
+    kontrol(iki && iki.klasor === 'kut/ui', 'birden çok yol geçince dosyanın kendi klasörü seçildi');
+
     console.log('1c) Görsel listesini işlere bölme');
     const { listeyiAyir } = require('../lib/liste');
     const bolunenler = listeyiAyir([
