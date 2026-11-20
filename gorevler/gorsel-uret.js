@@ -84,6 +84,22 @@ async function calistir(baglam) {
     return sonuc;
   };
 
+  // ChatGPT "görsel oluşturma hız sınırına ulaşıldı, yaklaşık N dakika sonra" derse o süre boyunca
+  // hiçbir sekme yeni istem göndermez; hata sayılan deneme de o süre dolunca tekrarlanır.
+  let sinirBitis = 0;
+  const sinirSuresi = (mesaj) => {
+    if (!/hız sınırı|rate limit|too many|limit(ine)? (ulaş|reach)/i.test(mesaj)) return 0;
+    const e = mesaj.match(/(\d+)\s*(dakika|minute|dk)/i);
+    return (e ? Number(e[1]) : 10) + 1; // bir dakika pay
+  };
+  const sinirBekle = async (etiket) => {
+    const kalan = sinirBitis - Date.now();
+    if (kalan > 0) {
+      gunluk(`${etiket}: hız sınırı için ${Math.ceil(kalan / 60000)} dakika bekleniyor…`);
+      await bekle(kalan);
+    }
+  };
+
   const isle = async (i, sayfa, ilkMi) => {
     const { ad, istem, referanslar, hedef } = istemler[i];
     const etiket = `[${i + 1}/${istemler.length}] ${ad}`;
@@ -100,8 +116,10 @@ async function calistir(baglam) {
     const tamIstem = `${ayar.onEk || ''}${istem}${ayar.sonEk ? ` ${ayar.sonEk}` : ''}`;
     let gorseller = null;
     let sonHata = null;
+    let sinirSayisi = 0; // aynı iş için en fazla 4 kez hız sınırı beklenir
     for (let deneme = 1; deneme <= ayar.denemeSayisi && !gorseller && !dur; deneme++) {
       try {
+        await sinirBekle(etiket);
         gunluk(`${etiket}: üretiliyor…${deneme > 1 ? ` (deneme ${deneme})` : ''}`);
         bildir({ tur: 'istem', ad, durum: 'uretiliyor' });
         gorseller = await gorselUret(sayfa, tamIstem, ayar, gunluk, referanslar, esZamanli > 1 ? sirayla : undefined);
@@ -109,6 +127,13 @@ async function calistir(baglam) {
         // Playwright hatalarının çok satırlı çağrı dökümünü at, ilk satır yeter.
         sonHata = new Error(String(hata.message).split('\n')[0]);
         gunluk(`${etiket}: olmadı. ${sonHata.message}`);
+        const sinirDk = sinirSuresi(sonHata.message);
+        if (sinirDk && ++sinirSayisi <= 4) {
+          sinirBitis = Math.max(sinirBitis, Date.now() + sinirDk * 60000);
+          gunluk(`  ChatGPT hız sınırı: tüm sekmeler ${sinirDk} dakika bekleyecek; bu deneme sayılmadı.`);
+          deneme--; // sınır yüzünden olmayan deneme hak yemez
+          continue;
+        }
         if (deneme < ayar.denemeSayisi) {
           gunluk(`  ${ayar.denemeArasiDakika} dakika beklenip tekrar denenecek.`);
           await bekle(ayar.denemeArasiDakika * 60 * 1000);
