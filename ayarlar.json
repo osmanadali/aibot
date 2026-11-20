@@ -26,7 +26,8 @@
       "kullaniciMesaji": "[data-message-author-role='user']",
       "ekGorseli": "img[alt^='Kullanıcı eki' i], img[alt^='User attachment' i], img[alt^='Uploaded image' i]",
       "dosyaGirdisi": "input[type='file']"
-    }
+    },
+    "esZamanli": 1
   },
   "gorselUret": {
     "istemDosyasi": "istemler.txt",

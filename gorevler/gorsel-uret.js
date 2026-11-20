@@ -3,6 +3,7 @@
 // devam eder (biten istemler cikti/durum.json içinde tutulur).
 //
 // Seçenekler:  --istemler <dosya>   --cikti <klasör>   --yeniden (bitenleri de baştan üret)
+//              --es-zamanli <sayı> (aynı anda kaç sohbette üretilsin; varsayılan chatgpt.esZamanli ya da 1)
 
 const fs = require('fs');
 const path = require('path');
@@ -69,78 +70,108 @@ async function calistir(baglam) {
   const hedefler = {};
   const basarisizlar = [];
   let ustUsteHata = 0;
+  let dur = false;
   let oturum = null;
-  let sayfa = null;
+  const sayfalar = [];
+
+  // Aynı anda kaç sohbette üretileceği. Yazma/gönderme adımları sıraya konur (ChatGPT yeni sohbet
+  // taslağını sekmeler arasında paylaşır); görselin beklenmesi ve indirilmesi aynı anda yürür.
+  const esZamanli = Math.max(1, Number(secenekler['es-zamanli'] || ayar.esZamanli || 1));
+  let kilit = Promise.resolve();
+  const sirayla = (is) => {
+    const sonuc = kilit.then(is);
+    kilit = sonuc.then(() => bekle(1500), () => bekle(1500)); // gönderilen sohbetin adresi otursun
+    return sonuc;
+  };
+
+  const isle = async (i, sayfa, ilkMi) => {
+    const { ad, istem, referanslar, hedef } = istemler[i];
+    const etiket = `[${i + 1}/${istemler.length}] ${ad}`;
+    const anahtar = `${ad}|${istem}`;
+
+    const onceki = (durum[anahtar] || []).filter((dosya) => fs.existsSync(path.join(cikti, dosya)));
+    if (onceki.length && !secenekler.yeniden) {
+      gunluk(`${etiket}: daha önce üretilmiş, atlanıyor.`);
+      bildir({ tur: 'istem', ad, durum: 'bitti' });
+      return;
+    }
+    if (!ilkMi && esZamanli === 1) await bekle(ayar.istemArasiSaniye * 1000);
+
+    const tamIstem = `${ayar.onEk || ''}${istem}${ayar.sonEk ? ` ${ayar.sonEk}` : ''}`;
+    let gorseller = null;
+    let sonHata = null;
+    for (let deneme = 1; deneme <= ayar.denemeSayisi && !gorseller && !dur; deneme++) {
+      try {
+        gunluk(`${etiket}: üretiliyor…${deneme > 1 ? ` (deneme ${deneme})` : ''}`);
+        bildir({ tur: 'istem', ad, durum: 'uretiliyor' });
+        gorseller = await gorselUret(sayfa, tamIstem, ayar, gunluk, referanslar, esZamanli > 1 ? sirayla : undefined);
+      } catch (hata) {
+        // Playwright hatalarının çok satırlı çağrı dökümünü at, ilk satır yeter.
+        sonHata = new Error(String(hata.message).split('\n')[0]);
+        gunluk(`${etiket}: olmadı. ${sonHata.message}`);
+        if (deneme < ayar.denemeSayisi) {
+          gunluk(`  ${ayar.denemeArasiDakika} dakika beklenip tekrar denenecek.`);
+          await bekle(ayar.denemeArasiDakika * 60 * 1000);
+        }
+      }
+    }
+
+    if (!gorseller) {
+      if (!sonHata) return; // robot durduruldu
+      const kanit = path.join(cikti, `hata-${ad}.png`);
+      await sayfa.screenshot({ path: kanit }).catch(() => {});
+      basarisizlar.push({ ad, neden: sonHata.message });
+      bildir({ tur: 'istem', ad, durum: 'hata', neden: sonHata.message });
+      gunluk(`${etiket}: BAŞARISIZ. Ekran görüntüsü: ${kanit}`);
+      if (++ustUsteHata >= 2 && !dur) {
+        dur = true;
+        gunluk('Üst üste 2 istem başarısız oldu; görsel limiti dolmuş olabilir. Robot duruyor.');
+        gunluk('Daha sonra aynı komutu tekrar çalıştır; kaldığı yerden devam eder.');
+      }
+      return;
+    }
+    ustUsteHata = 0;
+
+    const dosyalar = gorseller.map(({ bayt, uzanti }, n) => {
+      const dosya = `${ad}${n ? `-${n + 1}` : ''}.${uzanti}`;
+      fs.writeFileSync(path.join(cikti, dosya), bayt);
+      return dosya;
+    });
+    durum[anahtar] = dosyalar;
+    fs.writeFileSync(durumDosyasi, JSON.stringify(durum, null, 2));
+    uretilenler.push(...dosyalar.map((dosya) => path.join(cikti, dosya)));
+    // GitHub adımı her görseli, işin metninde yazan hedefe gönderir.
+    if (hedef) for (const dosya of dosyalar) hedefler[path.join(cikti, dosya)] = hedef;
+    gunluk(`${etiket}: kaydedildi -> ${dosyalar.join(', ')}`);
+    bildir({ tur: 'istem', ad, durum: 'bitti' });
+  };
 
   try {
-    for (let i = 0; i < istemler.length; i++) {
-      const { ad, istem, referanslar, hedef } = istemler[i];
-      const etiket = `[${i + 1}/${istemler.length}] ${ad}`;
-      const anahtar = `${ad}|${istem}`;
-
-      const onceki = (durum[anahtar] || []).filter((dosya) => fs.existsSync(path.join(cikti, dosya)));
-      if (onceki.length && !secenekler.yeniden) {
-        gunluk(`${etiket}: daha önce üretilmiş, atlanıyor.`);
-        bildir({ tur: 'istem', ad, durum: 'bitti' });
-        continue;
-      }
-
-      if (!sayfa) {
-        oturum = await tarayiciyaBaglan(baglam);
-        sayfa = await oturum.icerik.newPage();
-      } else {
-        await bekle(ayar.istemArasiSaniye * 1000);
-      }
-
-      const tamIstem = `${ayar.onEk || ''}${istem}${ayar.sonEk ? ` ${ayar.sonEk}` : ''}`;
-      let gorseller = null;
-      let sonHata = null;
-      for (let deneme = 1; deneme <= ayar.denemeSayisi && !gorseller; deneme++) {
-        try {
-          gunluk(`${etiket}: üretiliyor…${deneme > 1 ? ` (deneme ${deneme})` : ''}`);
-          bildir({ tur: 'istem', ad, durum: 'uretiliyor' });
-          gorseller = await gorselUret(sayfa, tamIstem, ayar, gunluk, referanslar);
-        } catch (hata) {
-          // Playwright hatalarının çok satırlı çağrı dökümünü at, ilk satır yeter.
-          sonHata = new Error(String(hata.message).split('\n')[0]);
-          gunluk(`${etiket}: olmadı. ${sonHata.message}`);
-          if (deneme < ayar.denemeSayisi) {
-            gunluk(`  ${ayar.denemeArasiDakika} dakika beklenip tekrar denenecek.`);
-            await bekle(ayar.denemeArasiDakika * 60 * 1000);
-          }
-        }
-      }
-
-      if (!gorseller) {
-        const kanit = path.join(cikti, `hata-${ad}.png`);
-        await sayfa.screenshot({ path: kanit }).catch(() => {});
-        basarisizlar.push({ ad, neden: sonHata.message });
-        bildir({ tur: 'istem', ad, durum: 'hata', neden: sonHata.message });
-        gunluk(`${etiket}: BAŞARISIZ. Ekran görüntüsü: ${kanit}`);
-        if (++ustUsteHata >= 2) {
-          gunluk('Üst üste 2 istem başarısız oldu; görsel limiti dolmuş olabilir. Robot duruyor.');
-          gunluk('Daha sonra aynı komutu tekrar çalıştır; kaldığı yerden devam eder.');
-          break;
-        }
-        continue;
-      }
-      ustUsteHata = 0;
-
-      const dosyalar = gorseller.map(({ bayt, uzanti }, n) => {
-        const dosya = `${ad}${n ? `-${n + 1}` : ''}.${uzanti}`;
-        fs.writeFileSync(path.join(cikti, dosya), bayt);
-        return dosya;
-      });
-      durum[anahtar] = dosyalar;
-      fs.writeFileSync(durumDosyasi, JSON.stringify(durum, null, 2));
-      uretilenler.push(...dosyalar.map((dosya) => path.join(cikti, dosya)));
-      // GitHub adımı her görseli, işin metninde yazan hedefe gönderir.
-      if (hedef) for (const dosya of dosyalar) hedefler[path.join(cikti, dosya)] = hedef;
-      gunluk(`${etiket}: kaydedildi -> ${dosyalar.join(', ')}`);
-      bildir({ tur: 'istem', ad, durum: 'bitti' });
+    const bekleyen = istemler.map((_, i) => i);
+    const bekleyenVarMi = bekleyen.some((i) => {
+      const { ad, istem } = istemler[i];
+      return secenekler.yeniden || !(durum[`${ad}|${istem}`] || []).some((d) => fs.existsSync(path.join(cikti, d)));
+    });
+    if (bekleyenVarMi) {
+      oturum = await tarayiciyaBaglan(baglam);
+      if (esZamanli > 1) gunluk(`Aynı anda ${esZamanli} sohbette üretiliyor.`);
     }
+    const iscilar = Array.from({ length: Math.min(esZamanli, istemler.length) }, async () => {
+      let sayfa = null;
+      let ilk = true;
+      while (bekleyen.length && !dur) {
+        const i = bekleyen.shift();
+        if (!sayfa && oturum) {
+          sayfa = await oturum.icerik.newPage();
+          sayfalar.push(sayfa);
+        }
+        await isle(i, sayfa, ilk);
+        ilk = false;
+      }
+    });
+    await Promise.all(iscilar);
   } finally {
-    if (sayfa) await sayfa.close().catch(() => {});
+    for (const sayfa of sayfalar) await sayfa.close().catch(() => {});
     // Yalnızca bağlantı kesilir; tarayıcı penceresi (ve giriş) açık kalır.
     if (oturum) await oturum.tarayici.close().catch(() => {});
   }
