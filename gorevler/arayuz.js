@@ -14,6 +14,7 @@ const path = require('path');
 const { fork, spawn } = require('child_process');
 const { guvenliAd } = require('../lib/gorseller');
 const { listeyiAyir } = require('../lib/liste');
+const { hedefiBul, hedefOzeti } = require('../lib/hedef');
 const { jsonOku, ayarlariYukle, yerelAyarYaz } = require('../lib/ayarlar');
 const { kuruluSurum, sonSurum } = require('../lib/guncelle');
 const { tarayiciYolunuBul } = require('../lib/tarayici');
@@ -100,6 +101,7 @@ async function calistir(baglam) {
         ad: is.ad,
         istem: is.istem,
         referanslar: is.referanslar.map((d) => `/referans/${encodeURIComponent(d)}`),
+        hedef: hedefOzeti(is.hedef),
         revize: is.revize ? { not: is.revize.not, sayi: is.revize.sayi, onceki: `/referans/${encodeURIComponent(is.revize.referans)}` } : null,
         durum: dosyalar.length ? 'bitti' : anlik.durum === 'uretiliyor' && !surec ? 'bekliyor' : anlik.durum || 'bekliyor',
         neden: dosyalar.length ? '' : anlik.neden || '',
@@ -158,14 +160,24 @@ async function calistir(baglam) {
     });
   }
 
-  function isEkle(isler, ad, istem, refler) {
+  // Arayüzden ya da API'den açıkça verilen hedef; yalnızca bilinen alanlar alınır.
+  function hedefiTemizle(gelen) {
+    if (!gelen || typeof gelen !== 'object') return null;
+    const hedef = {};
+    for (const alan of ['depo', 'dal', 'klasor', 'mesaj', 'agacYolu']) {
+      if (typeof gelen[alan] === 'string' && gelen[alan].trim()) hedef[alan] = gelen[alan].trim();
+    }
+    return Object.keys(hedef).length ? hedef : null;
+  }
+
+  function isEkle(isler, ad, istem, refler, hedef) {
     const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     const referanslar = refler.map(({ bayt, tur }, n) => {
       const dosya = `${id}-${n + 1}.${tur}`;
       fs.writeFileSync(path.join(refKlasoru, dosya), bayt);
       return dosya;
     });
-    isler.push({ id, ad: benzersizAd(guvenliAd(ad || istem), isler), istem, referanslar });
+    isler.push({ id, ad: benzersizAd(guvenliAd(ad || istem), isler), istem, referanslar, ...(hedef ? { hedef } : {}) });
   }
 
   const islemler = {
@@ -173,7 +185,8 @@ async function calistir(baglam) {
       const istem = String(govde.istem || '').replace(/\s+/g, ' ').trim();
       if (!istem) throw new IstekHatasi(400, 'İstem boş olamaz.');
       const isler = isleriOku();
-      isEkle(isler, govde.ad, istem, referanslariCoz(govde.referanslar));
+      // Hedef açıkça verilmediyse istemin kendisinde yazan yol/depo/dal kullanılır.
+      isEkle(isler, govde.ad, istem, referanslariCoz(govde.referanslar), hedefiTemizle(govde.hedef) || hedefiBul(istem, govde.ad));
       isleriYaz(isler);
     },
 
@@ -184,7 +197,11 @@ async function calistir(baglam) {
       if (parcalar.length > 300) throw new IstekHatasi(400, 'Bir seferde en fazla 300 görsel eklenebilir.');
       const refler = referanslariCoz(govde.referanslar);
       const isler = isleriOku();
-      for (const { ad, istem } of parcalar) isEkle(isler, ad, istem.replace(/\s+/g, ' ').trim(), refler);
+      // Listenin metninde yazan depo, dal, klasör ve commit mesajı her işin hedefi olur.
+      const genelHedef = hedefiTemizle(govde.hedef);
+      for (const { ad, istem } of parcalar) {
+        isEkle(isler, ad, istem.replace(/\s+/g, ' ').trim(), refler, genelHedef || hedefiBul(govde.metin, ad));
+      }
       isleriYaz(isler);
       return { eklenen: parcalar.length };
     },
@@ -268,7 +285,8 @@ async function calistir(baglam) {
       if (govde.sonra === 'claude' && !projeVar) {
         throw new IstekHatasi(400, 'Claude Code için önce Ayarlar bölümünde oyun projesi klasörünü seç.');
       }
-      if (govde.sonra === 'github' && !projeVar && !(guncel.git || {}).depoAdresi && !(guncel.git || {}).projeKlasoru) {
+      const hepsiHedefli = bekleyenler.every((is) => is.hedef && is.hedef.depo);
+      if (govde.sonra === 'github' && !hepsiHedefli && !projeVar && !(guncel.git || {}).depoAdresi && !(guncel.git || {}).projeKlasoru) {
         throw new IstekHatasi(400, 'GitHub için önce Ayarlar bölümünde GitHub deposunun adresini yaz.');
       }
 
@@ -276,7 +294,7 @@ async function calistir(baglam) {
       canli = {};
       fs.writeFileSync(
         calisanDosya,
-        JSON.stringify(bekleyenler.map((is) => ({ ad: is.ad, istem: uretimIstemi(is), referanslar: uretimReferanslari(is).map((d) => path.join(refKlasoru, d)) })))
+        JSON.stringify(bekleyenler.map((is) => ({ ad: is.ad, istem: uretimIstemi(is), referanslar: uretimReferanslari(is).map((d) => path.join(refKlasoru, d)), hedef: is.hedef || null })))
       );
       gunlugeYaz(`—— ${bekleyenler.length} iş başlatıldı ——`);
       const argumanlar = ['gorsel-uret', ...SONRAKI_ADIM[sonra], '--ayarlar', ayarDosyasi, '--istemler', calisanDosya, '--veri', veriKlasoru];
