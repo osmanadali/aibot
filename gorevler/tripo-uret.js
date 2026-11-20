@@ -37,7 +37,7 @@ async function calistir(baglam) {
   for (const dosya of hazir) if (!fs.existsSync(dosya)) throw new Error(`GLB bulunamadı: ${dosya}`);
   const uretilecek = modeller.filter((m) => !m.glb);
   for (const m of uretilecek) {
-    if (!m.ad || !m.gorsel || !fs.existsSync(m.gorsel)) throw new Error(`Eksik ya da bulunamayan görsel: ${JSON.stringify(m)}`);
+    if (!m.ad || (!m.gorev && (!m.gorsel || !fs.existsSync(m.gorsel)))) throw new Error(`Eksik ya da bulunamayan görsel: ${JSON.stringify(m)}`);
     if (!['biped', 'quadruped', 'yok', undefined].includes(m.iskelet)) throw new Error(`Geçersiz iskelet "${m.iskelet}" (${m.ad})`);
   }
 
@@ -67,13 +67,18 @@ async function calistir(baglam) {
       const sayfa = await oturum.icerik.newPage();
       let ayrilan = 0;
       try {
-        gunluk(`[${m.ad}] üretim başlatılıyor (${m.iskelet || 'yok'}, ${m.poligon || 'varsayılan'} poligon)…`);
+        gunluk(
+          m.gorev
+            ? `[${m.ad}] Tripo görevinden devam ediliyor: ${m.gorev}`
+            : `[${m.ad}] üretim başlatılıyor (${m.iskelet || 'yok'}, ${m.poligon || 'varsayılan'} poligon)…`
+        );
         bildir({ tur: 'istem', ad: m.ad, durum: 'uretiliyor' });
         // İskeletli modelde iskelet kredisi de baştan ayrılır; aynı anda çalışanlar hesabı aşmasın,
         // üretilip iskeletsiz kalan model olmasın.
         const rigli = m.iskelet && m.iskelet !== 'yok';
         const rigTahmini = rigli ? Number(ayar.rigKredi || 20) : 0;
-        const bas = await tripo.uretimiBaslat(sayfa, ayar, m, async (g) => {
+        // "gorev" verilmişse (yarıda kalmış bir iş) üretim atlanır, o görevden devam edilir.
+        const bas = m.gorev ? { gorev: m.gorev, kredi: 0 } : await tripo.uretimiBaslat(sayfa, ayar, m, async (g) => {
           if (!(await krediAyir(m.ad, rigli ? 'üretim + iskelet' : 'üretim')(g + rigTahmini))) return false;
           kalan += rigTahmini; // iskelet adımında gerçek kredi yeniden ayrılır
           ayrilan = rigTahmini;
@@ -84,20 +89,25 @@ async function calistir(baglam) {
           basarisizlar.push({ ad: m.ad, neden: 'kredi yetmedi' });
           return;
         }
-        const yuzey = await tripo.uretimiBekle(sayfa, ayar);
+        if (!m.gorev) gunluk(`[${m.ad}] Tripo görevi: ${bas.gorev} (yarıda kalırsa listeye "gorev" olarak yazılıp sürdürülebilir)`);
+        const yuzey = await tripo.uretimiBekle(sayfa, ayar, bas.gorev);
         gunluk(`[${m.ad}] model hazır: ${yuzey} üçgen (${bas.kredi} kredi).`);
         let iskeletli = false;
         if (m.iskelet && m.iskelet !== 'yok') {
           kalan += ayrilan; // baştan ayrılan tahmini iade et, gerçek krediyi ayır
           ayrilan = 0;
-          const rig = await tripo.rigEkle(sayfa, ayar, m.iskelet, krediAyir(m.ad, 'iskelet'));
+          const rig = await tripo.rigEkle(sayfa, ayar, bas.gorev, m.iskelet, krediAyir(m.ad, 'iskelet'));
           if (rig.atlandi) gunluk(`[${m.ad}] iskeletsiz indirilecek (kredi yetmedi).`);
+          else if (rig.zatenVardi) {
+            iskeletli = true;
+            gunluk(`[${m.ad}] iskelet zaten eklenmiş, kredi harcanmadı.`);
+          }
           else {
             iskeletli = true;
             gunluk(`[${m.ad}] iskelet eklendi (${rig.kredi} kredi).`);
           }
         }
-        const dosya = await tripo.glbIndir(sayfa, m.ad, cikti, iskeletli);
+        const dosya = await tripo.glbIndir(sayfa, ayar, bas.gorev, m.ad, cikti, iskeletli, yuzey);
         inenler.push(dosya);
         gunluk(`[${m.ad}] indirildi -> ${dosya} (${Math.round(fs.statSync(dosya).size / 1024)} KB)`);
         bildir({ tur: 'istem', ad: m.ad, durum: 'bitti' });

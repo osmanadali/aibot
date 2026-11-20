@@ -148,7 +148,10 @@ function grubuGonder(baglam, kaynaklar, hedef) {
 
   if (degisenler.length) {
     const mesaj = ((hedef && hedef.mesaj) || secenekler.mesaj || ayar.commitMesaji || 'Robot: {adet} görsel eklendi').replace('{adet}', degisenler.length);
-    gitZorunlu(proje, ['commit', '-m', mesaj, ...yolSecimi], yolGirdisi, 'Commit oluşturulamadı.');
+    // Git'te ad/e-posta tanımlı değilse (yerel proje klasörü) yalnızca bu commit için robot kimliği verilir;
+    // kullanıcının git ayarları değiştirilmez.
+    const kimlik = git(proje, ['config', 'user.email']).cikti ? [] : ['-c', 'user.name=Robot', '-c', 'user.email=robot@localhost'];
+    gitZorunlu(proje, [...kimlik, 'commit', '-m', mesaj, ...yolSecimi], yolGirdisi, 'Commit oluşturulamadı.');
     gunluk(`${degisenler.length} görsel commit'lendi: "${mesaj}"`);
   } else {
     gunluk('Görseller depoda zaten güncel; yeni commit gerekmedi.');

@@ -9,7 +9,7 @@
     "adres": "https://chatgpt.com/",
     "onEk": "Soru sormadan ve onay beklemeden şu tek görseli hemen üret: ",
     "sonEk": "",
-    "sorarsaYanit": "Evet, başla. Başka soru sormadan görseli şimdi üret.",
+    "sorarsaYanit": "Evet, başla. Yukarıdaki mesajımdaki istemi ve ekli referans görselleri kullanarak o tek görseli şimdi üret; başka soru sorma. Bu sohbette yukarıda bir görsel istemi yoksa görsel üretme, yalnızca 'istem yok' yaz.",
     "sorarsaDeneme": 1,
     "gorselBeklemeDakika": 6,
     "metinSonrasiSaniye": 20,
