@@ -29,9 +29,26 @@
     },
     "esZamanli": 1
   },
+  "gemini": {
+    "adres": "https://gemini.google.com/images",
+    "esZamanli": 1,
+    "tekGorsel": true,
+    "sorarsaYanit": "",
+    "seciciler": {
+      "uretilenGorsel": "generated-image img",
+      "haricGorsel": "thinking-overlay img",
+      "istemKutusu": "rich-textarea .ql-editor[contenteditable='true']",
+      "gonderDugmesi": "button[aria-label='Mesaj gönder'], button[aria-label='Send message']",
+      "kullaniciMesaji": "user-query",
+      "ekGorseli": "user-query img",
+      "yuklemeMenusu": "button[aria-label='Yükleme ve araçlar'], button[aria-label='Upload and tools'], button[aria-label='Open upload file menu']",
+      "dosyaGirdisi": "input[type='file'][accept*='image']"
+    }
+  },
   "gorselUret": {
     "istemDosyasi": "istemler.txt",
-    "ciktiKlasoru": "cikti"
+    "ciktiKlasoru": "cikti",
+    "servis": "chatgpt"
   },
   "claude": {
     "projeKlasoru": "",

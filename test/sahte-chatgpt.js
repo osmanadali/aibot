@@ -292,6 +292,141 @@ const YENI_SAYFA = (gorselKoku) => `<!doctype html>
   };
 </script>`;
 
+// Gemini'ye benzeyen sayfa (gerçek sayfada görülen yapıyla): istem kutusu bir fieldset içindeki
+// rich-textarea'da contenteditable bir .ql-editor; form yok. Dosya alanları sayfada yoktur, ancak
+// "Yükleme ve araçlar" (+) menüsü açılınca eklenir ve menü kapansa da kalır. Seçilen görseller
+// "eki kapat" düğmeli kartlar (uploader-file-preview) olarak görünür; kartlarda resim yoktur.
+// Ekler 900 ms "yüklenir" (mat-progress-spinner döner); bu sırada gönderilirse ekler düşer.
+// Kullanıcı mesajı user-query, yanıt model-response öğesidir; ekler user-query içinde 1 sn sonra
+// büyük resim olarak belirir. Üretim sırasında thinking-overlay içinde bir ara taslak (320 px)
+// belirir ve sayfada kalır; asıl görsel generated-image içinde, blob: adresindedir ve sayfanın
+// güvenlik kuralı (CSP) blob: adresinin sayfa içinden okunmasına izin vermez (gerçek Gemini'deki gibi).
+// Resimler sayfasındaki gibi, açıldıktan 1,5 sn sonra bir örnek galerisi görseli (600 px) yüklenir.
+// İstemde "BOS" geçerse yanıt boş kalır (görsel de yazı da yok; gerçekte görüldü).
+const GEMINI_SAYFA = () => `<!doctype html>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="connect-src 'self'">
+<title>Sahte Gemini</title>
+<div id="sohbet"></div>
+<fieldset class="input-area-fieldset">
+  <div class="text-input-field">
+    <div class="ekler"></div>
+    <button aria-label="Yükleme ve araçlar" id="arti">+</button>
+    <rich-textarea><div class="ql-editor ql-blank" contenteditable="true" aria-label="Gemini için bir istem girin" style="min-height:2em;border:1px solid #888"></div></rich-textarea>
+    <button aria-label="Dikte et">mik</button>
+    <button aria-label="Mesaj gönder" id="gonder" style="display:none">gönder</button>
+    <button aria-label="Yanıtı durdur" id="durdur" style="display:none">dur</button>
+  </div>
+</fieldset>
+<div id="menu" role="menu" hidden><button>Dosya yükleyin</button><button>Drive'dan ekle</button></div>
+<div class="hidden-uploader"></div>
+<script>
+  const kutu = document.querySelector('.ql-editor');
+  const sohbet = document.getElementById('sohbet');
+  const ekler = document.querySelector('.ekler');
+  const gonder = document.getElementById('gonder');
+  const durdur = document.getElementById('durdur');
+  const menu = document.getElementById('menu');
+  let bekleyenler = [];
+  let yukleniyor = false;
+  let sayac = 0;
+  const dugmeleriAyarla = () => { gonder.style.display = kutu.innerText.trim() ? '' : 'none'; };
+  kutu.addEventListener('input', dugmeleriAyarla);
+  setTimeout(() => {
+    const kart = document.createElement('media-gen-template-card');
+    const ornek = document.createElement('img');
+    ornek.src = '/gorsel/ornek.png';
+    kart.append(ornek);
+    document.body.append(kart);
+  }, 1500);
+  const kartlariCiz = () => ekler.replaceChildren(...bekleyenler.map((dosya, sira) => {
+    const kart = document.createElement('uploader-file-preview');
+    kart.className = 'file-preview-chip';
+    kart.textContent = dosya.name;
+    const kapat = document.createElement('button');
+    kapat.setAttribute('aria-label', 'eki kapat');
+    kapat.onclick = () => { bekleyenler.splice(sira, 1); kartlariCiz(); };
+    kart.append(kapat);
+    return kart;
+  }));
+  document.getElementById('arti').onclick = () => {
+    menu.hidden = false;
+    if (document.querySelector('input[type=file]')) return;
+    const yer = document.querySelector('.hidden-uploader');
+    for (const accept of ['.txt,.pdf,.doc,.docx', 'image/*,video/*', '.txt,.pdf,.doc,.docx']) {
+      const alan = document.createElement('input');
+      alan.type = 'file';
+      alan.multiple = true;
+      alan.accept = accept;
+      alan.className = 'hidden-file-input';
+      alan.hidden = true;
+      if (accept.startsWith('image')) {
+        alan.addEventListener('change', () => {
+          bekleyenler.push(...alan.files);
+          alan.value = '';
+          kartlariCiz();
+          yukleniyor = true;
+          const donen = document.createElement('mat-progress-spinner');
+          donen.textContent = '…';
+          ekler.append(donen);
+          setTimeout(() => { yukleniyor = false; donen.remove(); }, 900);
+        });
+      }
+      yer.append(alan);
+    }
+  };
+  document.addEventListener('keydown', (olay) => { if (olay.key === 'Escape') menu.hidden = true; });
+  gonder.onclick = () => {
+    const istem = kutu.innerText.trim();
+    if (!istem) return;
+    // Yükleme bitmeden gönderilirse ekler düşer.
+    const gidenler = yukleniyor ? [] : bekleyenler;
+    bekleyenler = [];
+    kartlariCiz();
+    kutu.innerText = '';
+    dugmeleriAyarla();
+    const kullanici = document.createElement('user-query');
+    kullanici.textContent = istem;
+    sohbet.append(kullanici);
+    if (gidenler.length) {
+      setTimeout(() => kullanici.prepend(...gidenler.map((f) => { const r = document.createElement('img'); r.src = URL.createObjectURL(f); r.alt = 'Yüklenen resim'; return r; })), 1000);
+    }
+    durdur.style.display = '';
+    const yanit = document.createElement('model-response');
+    sohbet.append(yanit);
+    setTimeout(() => {
+      const dusunce = document.createElement('thinking-overlay');
+      const taslak = document.createElement('img');
+      taslak.src = '/gorsel/taslak.png';
+      dusunce.append(taslak);
+      yanit.append(dusunce);
+    }, 700);
+    setTimeout(async () => {
+      if (istem.includes('BOS')) {
+        durdur.style.display = 'none';
+        const kopyala = document.createElement('button');
+        kopyala.setAttribute('aria-label', 'Kopyala');
+        yanit.append(kopyala);
+        return;
+      }
+      const adres = '/gorsel/gemini-' + (++sayac) + '.png' + (gidenler.length ? '?ek=' + gidenler.length : '');
+      const resim = document.createElement('img');
+      resim.alt = 'Oluşturulan görsel 1';
+      resim.src = URL.createObjectURL(await (await fetch(adres)).blob());
+      const kap = document.createElement('generated-image');
+      kap.append(resim);
+      yanit.append(kap);
+      setTimeout(() => {
+        durdur.style.display = 'none';
+        const kopyala = document.createElement('button');
+        kopyala.setAttribute('aria-label', 'Kopyala');
+        kopyala.textContent = 'k';
+        yanit.append(kopyala);
+      }, 700);
+    }, 2000);
+  };
+</script>`;
+
 function dinle(sunucu) {
   return new Promise((coz) => sunucu.listen(0, '127.0.0.1', () => coz(sunucu.address().port)));
 }
@@ -299,13 +434,17 @@ function dinle(sunucu) {
 async function sahteChatgptBaslat() {
   const gorsel = pngUret(512, 512, [70, 160, 90]);
   const ekliGorsel = pngUret(300, 300, [60, 90, 200]);
+  const taslakGorsel = pngUret(320, 320, [230, 200, 40]); // Gemini'nin üretim sırasındaki ara taslağı
+  const ornekGorsel = pngUret(600, 600, [120, 120, 120]); // Gemini Resimler sayfasındaki örnek galerisi
   const ekSayilari = []; // referanslı istemlere dönen görseller indirilirken: kaç referans gelmişti
   const gorselYaniti = (istek, yanit) => {
     if (!istek.url.startsWith('/gorsel/')) return false;
     const ek = /[?&]ek=(\d+)/.exec(istek.url);
     if (ek) ekSayilari.push(Number(ek[1]));
     yanit.writeHead(200, { 'content-type': 'image/png' });
-    yanit.end(istek.url.includes('ek=') ? ekliGorsel : gorsel);
+    const ozel = { '/gorsel/taslak': taslakGorsel, '/gorsel/ornek': ornekGorsel };
+    const anahtar = Object.keys(ozel).find((on) => istek.url.startsWith(on));
+    yanit.end(anahtar ? ozel[anahtar] : istek.url.includes('ek=') ? ekliGorsel : gorsel);
     return true;
   };
 
@@ -318,7 +457,8 @@ async function sahteChatgptBaslat() {
   const site = http.createServer((istek, yanit) => {
     if (gorselYaniti(istek, yanit)) return;
     yanit.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-    yanit.end((istek.url.startsWith('/yeni') ? YENI_SAYFA : SAYFA)(`http://127.0.0.1:${gorselPortu}`));
+    const sayfa = istek.url.startsWith('/yeni') ? YENI_SAYFA : istek.url.startsWith('/gemini') ? GEMINI_SAYFA : SAYFA;
+    yanit.end(sayfa(`http://127.0.0.1:${gorselPortu}`));
   });
   const sitePortu = await dinle(site);
 

@@ -5,7 +5,7 @@ bilgisayarında çalışır. Bir arayüzü ve üç yeteneği var:
 
 | Görev | Ne yapar |
 | --- | --- |
-| `gorsel-uret` | `istemler.txt` içindeki her satırı ChatGPT'ye (tarayıcıda) yazar, görseli bekler, `cikti/` klasörüne kaydeder. |
+| `gorsel-uret` | `istemler.txt` içindeki her satırı ChatGPT'ye ya da Gemini'ye (tarayıcıda) yazar, görseli bekler, `cikti/` klasörüne kaydeder. |
 | `claude-gonder` | Görselleri oyun projenin klasörüne kopyalar ve o klasörde bir Claude Code sohbetine iletir. |
 | `arayuz` | Tarayıcıda açılan arayüzü başlatır: istem yaz ya da söyle, referans görsel ekle, sırayı başlat. |
 | `git-gonder` | Görselleri oyun projenin klasörüne kopyalar, commit'ler ve GitHub'a gönderir. |
@@ -42,6 +42,11 @@ yeniden ekler.
 - **Sıraya ekle**, sonra **Başlat.** Robot bekleyen işleri sırayla üretir; her
   kartta durumu ve bitince görseli görürsün. İlk seferde açılan robot
   tarayıcısında ChatGPT'ye giriş yapman gerekir.
+- **Nerede:** Görsellerin **ChatGPT**'de, **Gemini**'de ya da **ikisinde** birden
+  üretileceğini seç. "İkisi"nde bekleyen işler iki site arasında paylaşılır; ikisi aynı
+  anda ürettiği için sıra yaklaşık iki kat hızlı biter, bir sitenin sınırı dolunca kalan
+  işler diğerinde sürer. Gemini için robotun tarayıcısında bir kez Google hesabına
+  giriş yapman gerekir.
 - **Bitince:** Görselleri Claude Code sohbetine ya da GitHub'a göndermeyi
   seçebilirsin. Claude Code sohbeti ayrı bir komut penceresinde açılır.
 - Beğenmediğin görselde ↻ düğmesi görseli silip işi yeniden sıraya alır.
@@ -204,6 +209,9 @@ dosyaya kaydeder. Örnek:
 | `chatgpt.istemArasiSaniye` | İki istem arasındaki bekleme. |
 | `chatgpt.denemeSayisi` / `denemeArasiDakika` | Olmayan istem kaç kez, ne kadar arayla denenir. |
 | `chatgpt.seciciler` | ChatGPT sayfasındaki öğelerin adresleri (aşağıya bak). |
+| `gorselUret.servis` | Komut satırından ya da akıştan çalışınca görsellerin üretileceği yer: `chatgpt`, `gemini` ya da `ikisi`. Arayüzdeki "Nerede" seçimi bunun yerine geçer. |
+| `gemini.adres` | Gemini'de her istem için açılan sayfa (varsayılan `https://gemini.google.com/app`). |
+| `gemini.*` | Gemini'de yazılmayan her ayar (ön/son ek, bekleme süreleri, deneme sayısı) `chatgpt` altındakinden alınır; yalnızca Gemini'de farklı olmasını istediklerini buraya yaz. `gemini.seciciler` Gemini sayfasındaki öğelerin adresleridir. |
 | `claude.projeKlasoru` | Claude Code'un çalışacağı klasör. |
 | `claude.hedefAltKlasor` | Görsellerin proje içinde kopyalanacağı yer. Boş bırakılırsa kopyalanmaz. |
 | `claude.komut` | Varsayılan `claude`. Komut bulunamıyorsa tam yolunu yaz. |
@@ -219,18 +227,22 @@ dosyaya kaydeder. Örnek:
 | `guncelleme.kapali` | `true` ise açılışta güncelleme denetlenmez. |
 | `akislar` | Art arda çalışacak görev listeleri. |
 
-### ChatGPT arayüzü değişirse
+### ChatGPT ya da Gemini arayüzü değişirse
 
-ChatGPT arayüzünü sık değiştirir. Robot bu yüzden sayfadaki öğeleri sabit adlarla
+İki site de arayüzünü sık değiştirir. Robot bu yüzden sayfadaki öğeleri sabit adlarla
 değil, ne olduklarına bakarak bulur: istem kutusu görünen en büyük yazı alanıdır,
 gönder ve durdur düğmeleri etiketlerinden tanınır, üretilen görsel gönderimden
 sonra sayfada beliren yeni ve büyük resimdir. Eklediğin referans görseller
-("Kullanıcı eki" adlı resimler) çıktı sayılmaz.
+("Kullanıcı eki" adlı resimler, Gemini'de senin mesajının içindekiler) çıktı sayılmaz.
+Gemini'de dosya alanı yalnızca istem kutusunun yanındaki "+" menüsü açılınca gelir;
+robot menüyü kendisi açar. Gemini üretirken ara taslaklar gösterebilir; yalnızca son
+görsel alınır ve sayfadaki özgün çözünürlüğüyle PNG olarak kaydedilir.
 
 Yine de bir şey bulunamazsa robot günlüğe "Tanı:" ile başlayan bir satır yazar;
 bu satır sayfada gördüğü alanları ve düğmeleri listeler. O satır, neyin
 değiştiğini anlamak için yeterlidir. Belirli bir öğenin adresini elle vermek
-istersen `chatgpt.seciciler` altına yazabilirsin; orada yazanlar önce denenir.
+istersen `chatgpt.seciciler` (Gemini için `gemini.seciciler`) altına yazabilirsin;
+orada yazanlar önce denenir.
 
 ## Yeni görev ekleme
 

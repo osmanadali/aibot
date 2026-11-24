@@ -189,6 +189,30 @@ async function ana() {
     ayarlar.chatgpt.adres = site.adres;
     ayarYaz();
 
+    console.log('1e) Gemini: + menüsünden dosya alanı, kart önizlemeli ekler, user-query içindeki ekler; ikisi birden');
+    const geminiCikti = path.join(gecici, 'cikti-gemini');
+    ayarlar.gemini = { ...ayarlar.gemini, adres: `${site.adres}gemini` };
+    ayarYaz();
+    fs.writeFileSync(yeniIstemler, JSON.stringify([
+      { ad: 'gemini-duz', istem: 'Kılıçlı bir şövalye' },
+      { ad: 'gemini-ref', istem: 'Referanslardaki iki karakteri yan yana çiz', referanslar: [refler[0], refler[1]] },
+      { ad: 'gemini-bos', istem: 'BOS yanıt dönen bir istem' },
+    ]));
+    site.ekSayilari.length = 0;
+    sonuc = await robotCalistir(['gorsel-uret', '--ayarlar', ayarDosyasi, '--istemler', yeniIstemler, '--cikti', geminiCikti, '--servis', 'gemini']);
+    // PNG'nin genişliği (tuvalden alınan görsel yeniden kodlandığı için baytlar değil boyut karşılaştırılır).
+    const pngEni = (dosya) => (fs.existsSync(dosya) && pngMi(dosya) ? fs.readFileSync(dosya).readUInt32BE(16) : 0);
+    kontrol(sonuc.status === 0 && /Üretim yeri: Gemini/.test(sonuc.stdout), 'görev Gemini\'de çalıştı');
+    kontrol(pngEni(path.join(geminiCikti, 'gemini-duz.png')) === 512, 'Gemini\'de referanssız görsel üretilip özgün boyutunda kaydedildi');
+    kontrol(!/ekran görüntüsü alınıyor/.test(sonuc.stdout), 'blob: adresindeki görsel tuvalden alındı (ekran görüntüsüne düşülmedi)');
+    kontrol(site.ekSayilari.includes(2) && pngEni(path.join(geminiCikti, 'gemini-ref.png')) === 300, 'dosya alanı + menüsünden açıldı, iki referans yüklenmesi beklenip Gemini\'ye ulaştı');
+    kontrol(!fs.readdirSync(geminiCikti).some((ad) => /-\d+\.png$/.test(ad)), 'user-query içindeki ekler, ara taslak ve örnek galerisi çıktı sayılmadı');
+    kontrol(!fs.existsSync(path.join(geminiCikti, 'gemini-bos.png')) && /gemini-bos: olmadı/.test(sonuc.stdout) && !/yanıtı gönderiliyor/.test(sonuc.stdout), 'Gemini boş yanıt verince ısrar edilmedi, iş hatayla bitti');
+    fs.writeFileSync(yeniIstemler, JSON.stringify([1, 2, 3, 4].map((n) => ({ ad: `iki-${n}`, istem: `Basit bir simge ${n}` }))));
+    sonuc = await robotCalistir(['gorsel-uret', '--ayarlar', ayarDosyasi, '--istemler', yeniIstemler, '--cikti', geminiCikti, '--servis', 'ikisi']);
+    kontrol(sonuc.status === 0 && [1, 2, 3, 4].every((n) => fs.existsSync(path.join(geminiCikti, `iki-${n}.png`))), '"ikisi" seçilince dört görsel de kaydedildi');
+    kontrol(/kaydedildi/.test(sonuc.stdout) && /iki-\d · ChatGPT: kaydedildi/.test(sonuc.stdout) && /iki-\d · Gemini: kaydedildi/.test(sonuc.stdout), 'işler ChatGPT ile Gemini arasında paylaşıldı');
+
     console.log('1d) İstemdeki hedefi (depo, dal, klasör, commit mesajı) okuma');
     const { hedefiBul } = require('../lib/hedef');
     const tam = hedefiBul(
@@ -332,8 +356,9 @@ async function ana() {
       kontrol(yanit.veri.ayarlar.sonEk === 'suluboya' && JSON.parse(fs.readFileSync(yerelDosya, 'utf8')).chatgpt.sonEk === 'suluboya', 'ayar değişikliği yerel ayar dosyasına yazıldı');
       kontrol((JSON.parse(fs.readFileSync(ayarDosyasi, 'utf8')).chatgpt.sonEk || '') === (ayarlar.chatgpt.sonEk || ''), 'varsayılan ayar dosyasına dokunulmadı');
 
-      yanit = await istek('/api/baslat', { sonra: 'yok' });
-      kontrol(yanit.kod === 200 && yanit.veri.calisiyor, 'sıra başlatıldı');
+      kontrol((await istek('/api/baslat', { sonra: 'yok', servis: 'baska' })).kod === 400, 'bilinmeyen üretim yeri reddedildi');
+      yanit = await istek('/api/baslat', { sonra: 'yok', servis: 'chatgpt' });
+      kontrol(yanit.kod === 200 && yanit.veri.calisiyor && yanit.veri.servis === 'chatgpt', 'sıra başlatıldı, üretim yeri bildirildi');
       for (let i = 0; i < 120 && yanit.veri.calisiyor; i++) {
         await new Promise((coz) => setTimeout(coz, 500));
         yanit = await istek('/api/durum');
