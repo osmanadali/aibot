@@ -9,7 +9,7 @@
     "adres": "https://chatgpt.com/",
     "onEk": "Soru sormadan ve onay beklemeden şu tek görseli hemen üret: ",
     "sonEk": "",
-    "sorarsaYanit": "Evet, başla. Başka soru sormadan görseli şimdi üret.",
+    "sorarsaYanit": "Evet, başla. Yukarıdaki mesajımdaki istemi ve ekli referans görselleri kullanarak o tek görseli şimdi üret; başka soru sorma. Bu sohbette yukarıda bir görsel istemi yoksa görsel üretme, yalnızca 'istem yok' yaz.",
     "sorarsaDeneme": 1,
     "gorselBeklemeDakika": 6,
     "metinSonrasiSaniye": 20,
@@ -26,7 +26,8 @@
       "kullaniciMesaji": "[data-message-author-role='user']",
       "ekGorseli": "img[alt^='Kullanıcı eki' i], img[alt^='User attachment' i], img[alt^='Uploaded image' i]",
       "dosyaGirdisi": "input[type='file']"
-    }
+    },
+    "esZamanli": 1
   },
   "gorselUret": {
     "istemDosyasi": "istemler.txt",
@@ -64,6 +65,23 @@
     "oyun-gorselleri-github": [
       "gorsel-uret",
       "git-gonder"
+    ],
+    "tripo-modelleri-github": [
+      "tripo-uret",
+      "git-gonder"
     ]
+  },
+  "tripo": {
+    "adres": "https://studio.tripo3d.ai/tr/workspace/generate",
+    "model": "H3.1",
+    "dokuKalitesi": "detailed",
+    "ultraAg": true,
+    "pbr": true,
+    "esZamanli": 3,
+    "rigKredi": 20,
+    "uretimBeklemeDakika": 12,
+    "rigBeklemeDakika": 6,
+    "zipParcaMB": 45,
+    "ciktiKlasoru": "cikti/modeller"
   }
 }

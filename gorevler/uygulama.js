@@ -2,7 +2,7 @@
 // arayüzü kendi penceresinde (adres çubuğu olmayan uygulama penceresi) açar.
 // Pencere kapatılınca robot da kapanır.
 //
-// Seçenekler:  --guncellemeden (güncelleme denetimini atla)
+// Seçenekler:  --guncellemeden (güncelleme denetimini atla)   --kisayolsuz (masaüstü kısayoluna dokunma)
 
 const fs = require('fs');
 const path = require('path');
@@ -53,7 +53,8 @@ async function calistir(baglam) {
     }
   }
 
-  kisayoluYenile(baglam);
+  // Denemeler gerçek masaüstü kısayolunu deneme klasörüne çevirmesin diye --kisayolsuz ile atlanır.
+  if (!secenekler.kisayolsuz) kisayoluYenile(baglam);
   await require('./arayuz').calistir({ ...baglam, secenekler: { ...secenekler, uygulama: true } });
 }
 
