@@ -1,9 +1,12 @@
-// istemler.txt içindeki her satır için ChatGPT'de bir görsel üretir ve çıktı
+// istemler.txt içindeki her satır için ChatGPT'de ya da Gemini'de bir görsel üretir ve çıktı
 // klasörüne kaydeder. Yarıda kalırsa tekrar çalıştırıldığında kaldığı yerden
 // devam eder (biten istemler cikti/durum.json içinde tutulur).
 //
 // Seçenekler:  --istemler <dosya>   --cikti <klasör>   --yeniden (bitenleri de baştan üret)
-//              --es-zamanli <sayı> (aynı anda kaç sohbette üretilsin; varsayılan chatgpt.esZamanli ya da 1)
+//              --servis chatgpt|gemini|ikisi (varsayılan gorselUret.servis ya da chatgpt;
+//                "ikisi": işler iki sitenin sekmeleri arasında paylaşılır)
+//              --es-zamanli <sayı> (her sitede aynı anda kaç sohbette üretilsin; varsayılan
+//                chatgpt.esZamanli / gemini.esZamanli ya da 1)
 
 const fs = require('fs');
 const path = require('path');
@@ -51,9 +54,24 @@ function istemleriOku(dosya) {
   return istemler;
 }
 
+// Her sitenin ayarları. Gemini, kendi bloğunda yazılmayan her şeyi (ön/son ek, bekleme süreleri,
+// soru sorarsa yanıt) ChatGPT ayarlarından alır; sayfa adresleri (seçiciler) her sitenin kendisinindir.
+const SERVISLER = {
+  chatgpt: (ayarlar) => ({ ...ayarlar.chatgpt, ad: 'ChatGPT' }),
+  gemini: (ayarlar) => ({ ...ayarlar.chatgpt, ...(ayarlar.gemini || {}), seciciler: { ...((ayarlar.gemini || {}).seciciler || {}) }, ad: 'Gemini' }),
+};
+
+function servisleriSec(secim) {
+  const ad = String(secim || 'chatgpt').toLowerCase();
+  if (ad === 'ikisi') return ['chatgpt', 'gemini'];
+  if (!SERVISLER[ad]) throw new Error(`Bilinmeyen servis: ${secim}. chatgpt, gemini ya da ikisi olmalı.`);
+  return [ad];
+}
+
 async function calistir(baglam) {
   const { ayarlar, secenekler, gunluk, bildir } = baglam;
-  const ayar = ayarlar.chatgpt;
+  const servisler = servisleriSec(secenekler.servis || (ayarlar.gorselUret || {}).servis);
+  const servisAyari = Object.fromEntries(servisler.map((ad) => [ad, SERVISLER[ad](ayarlar)]));
   const istemDosyasi = path.resolve(baglam.kok, secenekler.istemler || ayarlar.gorselUret.istemDosyasi);
   // istemler.txt sana aittir ve güncellemelerle değişmez; ilk çalıştırmada örnekten oluşturulur.
   const ornek = path.join(baglam.kok, 'istemler.ornek.txt');
@@ -69,40 +87,46 @@ async function calistir(baglam) {
   const uretilenler = [];
   const hedefler = {};
   const basarisizlar = [];
-  let ustUsteHata = 0;
-  let dur = false;
   let oturum = null;
   const sayfalar = [];
 
-  // Aynı anda kaç sohbette üretileceği. Yazma/gönderme adımları sıraya konur (ChatGPT yeni sohbet
-  // taslağını sekmeler arasında paylaşır); görselin beklenmesi ve indirilmesi aynı anda yürür.
-  const esZamanli = Math.max(1, Number(secenekler['es-zamanli'] || ayar.esZamanli || 1));
-  let kilit = Promise.resolve();
-  const sirayla = (is) => {
-    const sonuc = kilit.then(is);
-    kilit = sonuc.then(() => bekle(1500), () => bekle(1500)); // gönderilen sohbetin adresi otursun
-    return sonuc;
-  };
+  // Her site kendi başına izlenir: üst üste hata sayısı, durma, hız sınırı ve yazma kilidi.
+  const servis = Object.fromEntries(
+    servisler.map((ad) => {
+      // Aynı anda kaç sohbette üretileceği. Yazma/gönderme adımları sıraya konur (ChatGPT yeni sohbet
+      // taslağını sekmeler arasında paylaşır); görselin beklenmesi ve indirilmesi aynı anda yürür.
+      const esZamanli = Math.max(1, Number(secenekler['es-zamanli'] || servisAyari[ad].esZamanli || 1));
+      const sv = { ayar: servisAyari[ad], esZamanli, ustUsteHata: 0, dur: false, sinirBitis: 0, kilit: Promise.resolve() };
+      sv.sirayla = (is) => {
+        const sonuc = sv.kilit.then(is);
+        sv.kilit = sonuc.then(() => bekle(1500), () => bekle(1500)); // gönderilen sohbetin adresi otursun
+        return sonuc;
+      };
+      return [ad, sv];
+    })
+  );
+  const hepsiDurdu = () => servisler.every((ad) => servis[ad].dur);
 
-  // ChatGPT "görsel oluşturma hız sınırına ulaşıldı, yaklaşık N dakika sonra" derse o süre boyunca
-  // hiçbir sekme yeni istem göndermez; hata sayılan deneme de o süre dolunca tekrarlanır.
-  let sinirBitis = 0;
+  // Site "görsel oluşturma hız sınırına ulaşıldı, yaklaşık N dakika sonra" derse o süre boyunca
+  // o sitenin hiçbir sekmesi yeni istem göndermez; hata sayılan deneme de o süre dolunca tekrarlanır.
   const sinirSuresi = (mesaj) => {
-    if (!/hız sınırı|rate limit|too many|limit(ine)? (ulaş|reach)/i.test(mesaj)) return 0;
+    if (!/hız sınırı|rate limit|too many|limit(ine)? (ulaş|reach)|sınır(ın)?a ulaş/i.test(mesaj)) return 0;
     const e = mesaj.match(/(\d+)\s*(dakika|minute|dk)/i);
     return (e ? Number(e[1]) : 10) + 1; // bir dakika pay
   };
-  const sinirBekle = async (etiket) => {
-    const kalan = sinirBitis - Date.now();
+  const sinirBekle = async (etiket, sv) => {
+    const kalan = sv.sinirBitis - Date.now();
     if (kalan > 0) {
       gunluk(`${etiket}: hız sınırı için ${Math.ceil(kalan / 60000)} dakika bekleniyor…`);
       await bekle(kalan);
     }
   };
 
-  const isle = async (i, sayfa, ilkMi) => {
+  const isle = async (i, sayfa, ilkMi, servisAdi) => {
+    const sv = servis[servisAdi];
+    const { ayar, esZamanli } = sv;
     const { ad, istem, referanslar, hedef } = istemler[i];
-    const etiket = `[${i + 1}/${istemler.length}] ${ad}`;
+    const etiket = `[${i + 1}/${istemler.length}] ${ad}${servisler.length > 1 ? ` · ${ayar.ad}` : ''}`;
     const anahtar = `${ad}|${istem}`;
 
     const onceki = (durum[anahtar] || []).filter((dosya) => fs.existsSync(path.join(cikti, dosya)));
@@ -117,20 +141,20 @@ async function calistir(baglam) {
     let gorseller = null;
     let sonHata = null;
     let sinirSayisi = 0; // aynı iş için en fazla 4 kez hız sınırı beklenir
-    for (let deneme = 1; deneme <= ayar.denemeSayisi && !gorseller && !dur; deneme++) {
+    for (let deneme = 1; deneme <= ayar.denemeSayisi && !gorseller && !sv.dur; deneme++) {
       try {
-        await sinirBekle(etiket);
+        await sinirBekle(etiket, sv);
         gunluk(`${etiket}: üretiliyor…${deneme > 1 ? ` (deneme ${deneme})` : ''}`);
         bildir({ tur: 'istem', ad, durum: 'uretiliyor' });
-        gorseller = await gorselUret(sayfa, tamIstem, ayar, gunluk, referanslar, esZamanli > 1 ? sirayla : undefined);
+        gorseller = await gorselUret(sayfa, tamIstem, ayar, gunluk, referanslar, esZamanli > 1 ? sv.sirayla : undefined);
       } catch (hata) {
         // Playwright hatalarının çok satırlı çağrı dökümünü at, ilk satır yeter.
         sonHata = new Error(String(hata.message).split('\n')[0]);
         gunluk(`${etiket}: olmadı. ${sonHata.message}`);
         const sinirDk = sinirSuresi(sonHata.message);
         if (sinirDk && ++sinirSayisi <= 4) {
-          sinirBitis = Math.max(sinirBitis, Date.now() + sinirDk * 60000);
-          gunluk(`  ChatGPT hız sınırı: tüm sekmeler ${sinirDk} dakika bekleyecek; bu deneme sayılmadı.`);
+          sv.sinirBitis = Math.max(sv.sinirBitis, Date.now() + sinirDk * 60000);
+          gunluk(`  ${ayar.ad} hız sınırı: ${ayar.ad} sekmeleri ${sinirDk} dakika bekleyecek; bu deneme sayılmadı.`);
           deneme--; // sınır yüzünden olmayan deneme hak yemez
           continue;
         }
@@ -148,14 +172,18 @@ async function calistir(baglam) {
       basarisizlar.push({ ad, neden: sonHata.message });
       bildir({ tur: 'istem', ad, durum: 'hata', neden: sonHata.message });
       gunluk(`${etiket}: BAŞARISIZ. Ekran görüntüsü: ${kanit}`);
-      if (++ustUsteHata >= 2 && !dur) {
-        dur = true;
-        gunluk('Üst üste 2 istem başarısız oldu; görsel limiti dolmuş olabilir. Robot duruyor.');
-        gunluk('Daha sonra aynı komutu tekrar çalıştır; kaldığı yerden devam eder.');
+      if (++sv.ustUsteHata >= 2 && !sv.dur) {
+        sv.dur = true;
+        if (hepsiDurdu()) {
+          gunluk(`${servisler.length > 1 ? `${ayar.ad} sitesinde de üst` : 'Üst'} üste 2 istem başarısız oldu; görsel limiti dolmuş olabilir. Robot duruyor.`);
+          gunluk('Daha sonra aynı komutu tekrar çalıştır; kaldığı yerden devam eder.');
+        } else {
+          gunluk(`${ayar.ad} sitesinde üst üste 2 istem başarısız oldu; görsel limiti dolmuş olabilir. Kalan işler diğer sitede sürüyor.`);
+        }
       }
       return;
     }
-    ustUsteHata = 0;
+    sv.ustUsteHata = 0;
 
     const dosyalar = gorseller.map(({ bayt, uzanti }, n) => {
       const dosya = `${ad}${n ? `-${n + 1}` : ''}.${uzanti}`;
@@ -179,18 +207,21 @@ async function calistir(baglam) {
     });
     if (bekleyenVarMi) {
       oturum = await tarayiciyaBaglan(baglam);
-      if (esZamanli > 1) gunluk(`Aynı anda ${esZamanli} sohbette üretiliyor.`);
+      const ozet = servisler.map((ad) => `${servis[ad].ayar.ad}${servis[ad].esZamanli > 1 ? ` (aynı anda ${servis[ad].esZamanli} sohbet)` : ''}`);
+      if (servisler.length > 1 || servisler[0] !== 'chatgpt' || servis[servisler[0]].esZamanli > 1) gunluk(`Üretim yeri: ${ozet.join(' + ')}.`);
     }
-    const iscilar = Array.from({ length: Math.min(esZamanli, istemler.length) }, async () => {
+    // Her sitenin her sohbeti bir işçidir; işçiler bekleyen işleri ortak sıradan alır.
+    const isciServisleri = servisler.flatMap((ad) => Array.from({ length: servis[ad].esZamanli }, () => ad)).slice(0, Math.max(1, istemler.length));
+    const iscilar = isciServisleri.map(async (servisAdi) => {
       let sayfa = null;
       let ilk = true;
-      while (bekleyen.length && !dur) {
+      while (bekleyen.length && !servis[servisAdi].dur) {
         const i = bekleyen.shift();
         if (!sayfa && oturum) {
           sayfa = await oturum.icerik.newPage();
           sayfalar.push(sayfa);
         }
-        await isle(i, sayfa, ilk);
+        await isle(i, sayfa, ilk, servisAdi);
         ilk = false;
       }
     });
@@ -210,6 +241,6 @@ async function calistir(baglam) {
 
 module.exports = {
   ad: 'gorsel-uret',
-  aciklama: 'istemler.txt içindeki istemleri ChatGPT\'de sırayla üretir, görselleri klasöre kaydeder',
+  aciklama: 'istemler.txt içindeki istemleri ChatGPT\'de ya da Gemini\'de üretir, görselleri klasöre kaydeder',
   calistir,
 };

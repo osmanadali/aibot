@@ -497,6 +497,12 @@
       <div class="haplar" id="haplar"></div>
     </div>
     <div class="kart kumanda">
+      <span class="etiket">Nerede</span>
+      <div class="secim" id="servis" role="radiogroup" aria-label="Görseller nerede üretilsin">
+        <button type="button" role="radio" data-deger="chatgpt" title="Görseller ChatGPT'de üretilir">ChatGPT</button>
+        <button type="button" role="radio" data-deger="gemini" title="Görseller Gemini'de üretilir">Gemini</button>
+        <button type="button" role="radio" data-deger="ikisi" title="İşler ChatGPT ile Gemini arasında paylaşılır; ikisi aynı anda üretir">İkisi</button>
+      </div>
       <span class="etiket">Bitince</span>
       <div class="secim" id="sonra" role="radiogroup" aria-label="Görseller bitince ne yapılsın">
         <button type="button" role="radio" data-deger="yok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6"/></svg>Yalnızca kaydet</button>
@@ -670,6 +676,9 @@
     dugme.innerHTML = durum.calisiyor ? `${SIMGE.dur} Durdur` : `${SIMGE.oynat} Başlat`;
     dugme.disabled = !durum.calisiyor && !yapilacak;
     $('#sonra').classList.toggle('kapali', durum.calisiyor);
+    $('#servis').classList.toggle('kapali', durum.calisiyor);
+    // Robot çalışırken hangi sitede ürettiği gösterilir.
+    if (durum.calisiyor && durum.servis !== servis) { servis = durum.servis; servisiCiz(); }
 
     const imza = JSON.stringify(durum.isler);
     if (imza !== sonCizim) {
@@ -744,12 +753,27 @@
   }
   sonrayiCiz();
 
+  // ---------- üretim yeri: ChatGPT, Gemini ya da ikisi
+  let servis = 'chatgpt';
+  try { servis = localStorage.getItem('servis') || 'chatgpt'; } catch { /* saklama kapalı olabilir */ }
+  function servisiCiz() {
+    for (const dugme of document.querySelectorAll('#servis button')) dugme.setAttribute('aria-checked', String(dugme.dataset.deger === servis));
+  }
+  for (const dugme of document.querySelectorAll('#servis button')) {
+    dugme.addEventListener('click', () => {
+      servis = dugme.dataset.deger;
+      try { localStorage.setItem('servis', servis); } catch { /* önemli değil */ }
+      servisiCiz();
+    });
+  }
+  servisiCiz();
+
   $('#baslat').addEventListener('click', async () => {
     if (durum && durum.calisiyor) {
       await eylem('/api/durdur', {});
       return;
     }
-    if (await eylem('/api/baslat', { sonra })) {
+    if (await eylem('/api/baslat', { sonra, servis })) {
       $('#gunluk-kutu').open = true;
       bildir(sonra === 'claude' ? 'Başladı. Bitince Claude Code sohbeti ayrı bir pencerede açılır.' : 'Başladı.');
       yenile();

@@ -21,6 +21,8 @@ const { tarayiciYolunuBul } = require('../lib/tarayici');
 
 const GORSEL_TURLERI = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
 const SONRAKI_ADIM = { yok: [], claude: ['claude-gonder'], github: ['git-gonder'] };
+// Görsellerin üretileceği yer: ChatGPT, Gemini ya da ikisi (işler iki site arasında paylaşılır).
+const URETIM_YERLERI = ['chatgpt', 'gemini', 'ikisi'];
 const EN_FAZLA_GOVDE = 60 * 1024 * 1024;
 
 function gorselTuru(bayt) {
@@ -69,6 +71,7 @@ async function calistir(baglam) {
 
   let surec = null;
   let sonra = 'yok';
+  let servis = '';
   let yeniSurum = ''; // robot açıkken depoda görülen daha yeni sürüm
   const acilisDenetimi = baglam.veri.guncelleme;
   let guncellemeNotu = acilisDenetimi && acilisDenetimi.durum === 'atlandi' ? `güncelleme denetlenemedi: ${acilisDenetimi.neden}` : '';
@@ -114,6 +117,7 @@ async function calistir(baglam) {
     return {
       calisiyor: Boolean(surec),
       sonra,
+      servis: servis || (ayarlar.gorselUret || {}).servis || 'chatgpt',
       gunluk: gunlukSatirlari,
       isler,
       surum: {
@@ -276,6 +280,8 @@ async function calistir(baglam) {
     '/api/baslat': (govde) => {
       if (surec) throw new IstekHatasi(409, 'Robot zaten çalışıyor.');
       if (!(govde.sonra in SONRAKI_ADIM)) throw new IstekHatasi(400, 'Geçersiz seçim.');
+      const uretimYeri = govde.servis === undefined ? (ayarOku().gorselUret || {}).servis || 'chatgpt' : govde.servis;
+      if (!URETIM_YERLERI.includes(uretimYeri)) throw new IstekHatasi(400, 'Geçersiz üretim yeri (ChatGPT, Gemini ya da ikisi).');
       const cikti = ciktiKlasoru();
       const durum = jsonOku(durumDosyasi(), {});
       const bekleyenler = isleriOku().filter((is) => !bitenDosyalar(is, durum, cikti).length);
@@ -291,13 +297,14 @@ async function calistir(baglam) {
       }
 
       sonra = govde.sonra;
+      servis = uretimYeri;
       canli = {};
       fs.writeFileSync(
         calisanDosya,
         JSON.stringify(bekleyenler.map((is) => ({ ad: is.ad, istem: uretimIstemi(is), referanslar: uretimReferanslari(is).map((d) => path.join(refKlasoru, d)), hedef: is.hedef || null })))
       );
       gunlugeYaz(`—— ${bekleyenler.length} iş başlatıldı ——`);
-      const argumanlar = ['gorsel-uret', ...SONRAKI_ADIM[sonra], '--ayarlar', ayarDosyasi, '--istemler', calisanDosya, '--veri', veriKlasoru];
+      const argumanlar = ['gorsel-uret', ...SONRAKI_ADIM[sonra], '--ayarlar', ayarDosyasi, '--istemler', calisanDosya, '--veri', veriKlasoru, '--servis', servis];
       // Robot görünür bir komut penceresi olmadan çalışıyorsa (masaüstü kısayolu)
       // Claude Code sohbeti kendi penceresinde açılır.
       if (process.platform === 'win32' && !process.stdout.isTTY) argumanlar.push('--claude-mod', 'pencere');
