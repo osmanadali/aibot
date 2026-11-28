@@ -100,5 +100,18 @@
     "rigBeklemeDakika": 6,
     "zipParcaMB": 45,
     "ciktiKlasoru": "cikti/modeller"
+  },
+  "flow": {
+    "adres": "https://flow.google.com/",
+    "projeAdresi": "",
+    "gorsel": { "model": "Nano Banana 2.1", "oran": "9:16", "adet": 1, "dusunme": "", "indirme": "1K" },
+    "video": { "model": "Omni 1.2 Flash", "oran": "9:16", "adet": 1, "cozunurluk": "720p", "sure": 8, "indirme": "Orijinal" },
+    "gorselBeklemeDakika": 6,
+    "videoBeklemeDakika": 15,
+    "enFazlaKredi": 100,
+    "denemeSayisi": 2,
+    "denemeArasiDakika": 1,
+    "istemArasiSaniye": 5,
+    "ciktiKlasoru": "cikti/flow"
   }
 }
