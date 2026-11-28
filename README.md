@@ -10,6 +10,7 @@ bilgisayarında çalışır. Bir arayüzü ve üç yeteneği var:
 | `arayuz` | Tarayıcıda açılan arayüzü başlatır: istem yaz ya da söyle, referans görsel ekle, sırayı başlat. |
 | `git-gonder` | Görselleri oyun projenin klasörüne kopyalar, commit'ler ve GitHub'a gönderir. |
 | `tripo-uret` | Konsept görsellerden Tripo Studio'da 3D model üretir, iskelet ekler, GLB'leri indirip zip'ler. |
+| `flow-uret` | Google Flow'da görsel (Nano Banana) ya da video (Omni / Veo) üretir ve indirir. |
 
 İki hazır akış var: `oyun-gorselleri` görselleri üretip bilgisayarındaki Claude Code
 sohbetine iletir; `oyun-gorselleri-github` görselleri üretip GitHub'a gönderir.
@@ -184,6 +185,38 @@ node robot.js tripo-uret git-gonder --liste modeller.json
 - İnen GLB'ler `cikti/modeller/` altına, zip'ler ~45 MB'lık parçalar hâlinde (`modeller-1.zip`, ...)
   yazılır; `git-gonder` onları `hedef`'te yazan depoya/dala/klasöre gönderir.
 - Daha önce indirilmiş bir modeli yalnızca zip'e eklemek için `{ "ad": "x", "glb": "C:/.../x.glb" }`.
+
+## Google Flow ile görsel ve video
+
+Robotun tarayıcısında bir kez [Google Flow](https://flow.google.com)'a Google hesabınla giriş yap.
+Görsel üretimi 0 kredidir; video kredisi Google AI aboneliğinden düşer. Ardından:
+
+```bash
+node robot.js flow-uret --istemler flow-isler.json
+```
+
+`flow-isler.json`:
+
+```json
+[
+  { "ad": "kaktus", "istem": "Saksıda bir kaktüs, düz vektör çizim", "tur": "gorsel", "oran": "9:16" },
+  { "ad": "kaktus-2", "istem": "Aynı kaktüs balkonda", "tur": "gorsel", "referanslar": ["C:/.../kaktus.jpg"] },
+  { "ad": "sahne01", "istem": "Kamera yavaşça yaklaşır", "tur": "video", "baslangic": "C:/.../01.png", "sure": 8 }
+]
+```
+
+- `tur`: `gorsel` ya da `video`. Yazılmayan alanlar `ayarlar.json > flow > gorsel / video`'dan gelir.
+- Görsel: `model` (`Nano Banana 2.1`, `Nano Banana Pro`, `Nano Banana 2 Lite`), `oran` (16:9, 4:3, 1:1,
+  3:4, 9:16), `adet` (1-4), `dusunme` (Düşük / Orta / Yüksek), `referanslar`, `indirme` (`1K` ya da `2K`).
+- Video: `model` (`Omni 1.2 Flash`, `Veo 3.1 - Lite` …), `oran` (16:9 ya da 9:16), `cozunurluk`
+  (360p / 720p), `sure` (saniye), `adet`. Hazır bir görselden video için `baslangic` (ve istenirse `bitis`)
+  karesi, karakter/nesne referansı için `referanslar` verilir; ikisi aynı işte birlikte kullanılamaz.
+- Bir çalıştırmada en fazla `flow.enFazlaKredi` (ya da `--en-fazla-kredi`) kadar kredi harcanır; kredisi
+  yetmeyen iş atlanır.
+- Robot ilk çalıştırmada Flow'da bir proje açar ve adresini çıktı klasöründeki `flow-proje.txt`'ye yazar;
+  sonraki çalıştırmalar aynı projeyi kullanır. Başka bir proje için `--proje <adres>` ver.
+- Flow'un "Flow ajanı" anahtarı üretim süresince kapatılır, iş bitince eski hâline getirilir.
+- İnenler `cikti/flow/` altına yazılır; yarıda kalırsa aynı komut kaldığı yerden devam eder.
 
 ## Ayarlar
 
